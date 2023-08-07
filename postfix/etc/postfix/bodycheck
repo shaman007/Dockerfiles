@@ -1,0 +1,4 @@
+/^Subject: Rolex cheap/ REJECT
+/.*Pfizer.*/ REJECT
+/.*VIAGRA.*/ REJECT
+/.*Pharmacy.*/ REJECT
