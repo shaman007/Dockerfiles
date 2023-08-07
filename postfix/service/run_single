@@ -1,10 +1,4 @@
 #!/usr/bin/env bash
-set -e
-
-# If there is a need to change the "main.cf" during Pod startup, tools
-# like "sed" can be used to change settings "on the fly". In this case
-# the "main.cf" template file is just copied as is.
-#cp /main_single.cf.tmpl /etc/postfix/main.cf
 
 # Create virtual mailbox database
 postmap lmdb:/etc/postfix/vmailbox
