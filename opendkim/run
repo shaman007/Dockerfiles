@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -e
+syslog-ng
+opendkim -vvv
+while true; do sleep 1; done
+
+#tail -F /var/log/mail.log
