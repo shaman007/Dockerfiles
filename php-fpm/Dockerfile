@@ -22,6 +22,7 @@ RUN apt-get install -y --no-install-recommends \
 	zlib1g-dev libgd-dev \
 	libtidy-dev libxslt1-dev libmagic-dev libexif-dev file \
 	sqlite3 libsqlite3-dev libxslt-dev \
+        ffmpeg \
 	libmhash2 libmhash-dev libc-client-dev libkrb5-dev libssh2-1-dev \
 	unzip libpcre3 libpcre3-dev \
 	poppler-utils ghostscript libmagickwand-6.q16-dev libsnmp-dev libedit-dev libreadline6-dev libsodium-dev \
