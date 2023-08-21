@@ -4,5 +4,5 @@ syslog-ng
 dovecot
 #while true; do sleep 1; done
 
-# Keep tail process running to pipe Postfix log to stdout.
+# Keep tail process running to pipe Dovecot log to stdout.
 tail -F /var/log/mail.log
