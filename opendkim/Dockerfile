@@ -10,17 +10,13 @@ RUN apt -y install \
         opendkim \
         opendkim-tools
 COPY run /etc/service/
+RUN mkdir /etc/opendkim_init
 RUN mkdir /etc/opendkim
 COPY opendkim.conf /etc/
-COPY signingtable /etc/opendkim
-COPY keytable /etc/opendkim
-COPY mail.private  /etc/opendkim
-COPY mail.txt  /etc/opendkim
-COPY trustedhosts  /etc/opendkim
-RUN chmod 700 /etc/opendkim
-RUN chmod 400 /etc/opendkim/mail.private
-RUN chmod 400 /etc/opendkim/mail.txt
-RUN chown -R opendkim.opendkim /etc/opendkim
-#RUN ln -sf /dev/stdout /var/log/mail.log
+COPY signingtable /etc/opendkim_init
+COPY keytable /etc/opendkim_init
+COPY mail.private  /etc/opendkim_init
+COPY mail.txt  /etc/opendkim_init
+COPY trustedhosts  /etc/opendkim_init
 STOPSIGNAL SIGKILL
 ENTRYPOINT ["/etc/service/run"]
