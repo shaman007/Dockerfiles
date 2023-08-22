@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -e
+syslog-ng
+rspamd -f --insecure
+while true; do sleep 1; done
+
+# Keep tail process running to pipe Dovecot log to stdout.
+#tail -F /var/log/mail.log

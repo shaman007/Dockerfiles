@@ -6,3 +6,4 @@ Here I am keeping the dockerfiles I create or use for my projects.
  - Postfix container, initial and dirty!
  - OpenDKIM
  - Dovecot
+ - Rspamd
