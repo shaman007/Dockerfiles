@@ -93,24 +93,6 @@ PHP_SESSION_PATH=memcached.host:11211
 
 This will set php.ini global session handler to use Memcached server accessible at `memcached.host` DNS endpoint name and port 11211.
 
-### [Supervisord](http://supervisord.org/)
-
-```bash
-SUPERVISORD_PATH=/path/to/supervisord.conf
-```
-
-Allows to control and monitor multiple processes running inside the container. Example use case: ensure that there are minimum 8 simultaniously run Laravel Queues available at any time to process scheduled tasks.
-
-Note that if you use supervisord the container boot script will create a `/healthcheck` file to monitor supervisord main process, which can be used to monitor container health. This example configuration for `docker-compose.yaml` will ensure that container does not exit after boot and redirect supervisord logs into stdout.
-
-```bash
-    command: [ "tail", '-f', '/var/log/supervisor/supervisord.log' ]
-    healthcheck:
-      test: /healthcheck
-      retries: 3
-      timeout: 5s
-      interval: 5s
-```
 
 ### php access log (on|off)
 
@@ -161,9 +143,6 @@ turns on|off php error log to docker container stdout.
 -   ldap
 -   libxml
 -   mbstring
--   memcache
--   memcached
--   mongodb
 -   msgpack
 -   mysqli
 -   mysqlnd
@@ -216,51 +195,4 @@ turns on|off php error log to docker container stdout.
 
 -   Xdebug
 -   Zend OPcache
-
-## Pull latest image
-
-```sh
-docker pull crunchgeek/php-fpm:7.2
-```
-
-## Running PHP apps
-
-### Running image
-
-Run the PHP-FPM image, mounting a directory from your host.
-
-```sh
-docker run -it --name php-fpm -v /path/to/your/app:/app crunchgeek/php-fpm:7.2 php script.php
-```
-
-or using [Docker Compose](https://docs.docker.com/compose/):
-
-```sh
-version: '3'
-services:
-  php-fpm:
-    container_name: php-fpm
-    image: crunchgeek/php-fpm:7.3
-    entrypoint: php index.php
-    volumes:
-      - /path/to/your/app:/app
-```
-
-### Running as server
-
-```sh
-docker run --rm --name php-fpm -v /path/to/your/app:/app -p 8000:8000 crunchgeek/php-fpm:7.2 php -S 0.0.0.0:8000 /app/index.php
-```
-
-### Logging
-
-```sh
-docker logs php-fpm
-```
-
-# Listing installed extensions
-
-```sh
-docker run --rm -it crunchgeek/php-fpm:7.2 php -m
-```
 

@@ -56,11 +56,6 @@ RUN pecl install ds && \
 	pecl install mcrypt && \
 	docker-php-ext-enable ds imagick igbinary memcached
 
-#RUN pecl install mongodb && docker-php-ext-enable mongodb
-
-# install xdebug
-# RUN pecl install xdebug && docker-php-ext-enable xdebug
-
 RUN yes "" | pecl install msgpack && \
 	docker-php-ext-enable msgpack
 
@@ -103,11 +98,6 @@ RUN php composer-setup.php --quiet && rm composer-setup.php && \
 	mv composer.phar /usr/local/sbin/composer && \
 	chmod +x /usr/local/sbin/composer
 
-
-# install SendGrid
-RUN echo "postfix postfix/mailname string localhost" | debconf-set-selections && \
-	echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections && \
-	DEBIAN_FRONTEND=noninteractive apt-get install postfix libsasl2-modules -y
 
 ADD configs/php.ini /usr/local/etc/php/
 ADD configs/www.conf /usr/local/etc/php-fpm.d/
