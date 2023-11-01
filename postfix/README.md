@@ -1,2 +1,2 @@
 # kubernetes-postfix
-Container that runs postfix, not finished yet.
+Container that just runs postfix.

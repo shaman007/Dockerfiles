@@ -1,5 +1,7 @@
 # Dovecot
 
-Image for the dovecot.
+Image for the dovecot
+ 
+ - SIEVE
+ - SALSL
 
-TODO: fix logging.
