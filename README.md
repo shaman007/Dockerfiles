@@ -7,3 +7,4 @@ Here I am keeping the dockerfiles I create or use for my projects.
  - OpenDKIM
  - Dovecot
  - Rspamd
+ - Rsyslog
