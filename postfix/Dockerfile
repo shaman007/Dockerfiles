@@ -2,10 +2,6 @@ FROM debian:latest
 
 RUN apt update
 RUN apt install -y \
-        bash \
-        telnet \
-        vim \
-        procps \
         ca-certificates \
         postfix \
         postfix-pcre \
@@ -16,9 +12,10 @@ RUN apt install -y \
         postfix-policyd-spf-perl
 COPY service/* /etc/service/
 COPY etc/postfix/main.cf /etc/postfix/main.cf
-#COPY usr/sbin/runit_bootstrap /usr/sbin/runit_bootstrap
 COPY etc/aliases /etc/postfix
 RUN useradd shaman007
 RUN ln -sf /dev/stdout /var/log/mail.log
+# Clean up
+RUN apt-get remove -y git && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 STOPSIGNAL SIGKILL
 ENTRYPOINT ["/etc/service/run"]
