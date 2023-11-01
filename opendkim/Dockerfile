@@ -6,7 +6,7 @@ RUN apt -y install \
         telnet \
         ca-certificates \
         procps \
-        syslog-ng \
+        rsyslog \
         opendkim \
         opendkim-tools
 COPY run /etc/service/

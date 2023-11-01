@@ -8,7 +8,7 @@ RUN apt-get -y install \
   ca-certificates \
   ssl-cert
 
-RUN apt-get -y install syslog-ng
+RUN apt-get -y install rsyslog
 RUN mkdir /etc/service
 ADD run /etc/service
 RUN ln -sf /dev/stdout /var/log/mail.log

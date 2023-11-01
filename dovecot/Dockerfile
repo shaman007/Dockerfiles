@@ -21,9 +21,10 @@ RUN apt-get -y install \
   ca-certificates \
   ssl-cert
 
-RUN apt-get -y install syslog-ng
+RUN apt-get -y install rsyslog
+RUN echo "*.* @@rsyslog.logging.svc.cluster.local:514" >> /etc/rsyslog.conf
 RUN mkdir /etc/service
-RUN useradd shaman007
+RUN useradd shaman007 -d /var/mail/boxes/shaman007
 ADD run /etc/service
 RUN ln -sf /dev/stdout /var/log/mail.log
 ENTRYPOINT ["/etc/service/run"]

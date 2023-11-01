@@ -22,9 +22,9 @@ RUN apt-get install -y --no-install-recommends \
 	zlib1g-dev libgd-dev \
 	libtidy-dev libxslt1-dev libmagic-dev libexif-dev file \
 	sqlite3 libsqlite3-dev libxslt-dev \
-        ffmpeg \
 	libmhash2 libmhash-dev libc-client-dev libkrb5-dev libssh2-1-dev \
 	unzip libpcre3 libpcre3-dev \
+        ffmpeg \
 	poppler-utils ghostscript libmagickwand-6.q16-dev libsnmp-dev libedit-dev libreadline6-dev libsodium-dev \
 	freetds-bin freetds-dev freetds-common libct4 libsybdb5 tdsodbc libreadline-dev librecode-dev libpspell-dev libonig-dev
 
@@ -56,6 +56,11 @@ RUN pecl install ds && \
 	pecl install mcrypt && \
 	docker-php-ext-enable ds imagick igbinary memcached
 
+#RUN pecl install mongodb && docker-php-ext-enable mongodb
+
+# install xdebug
+# RUN pecl install xdebug && docker-php-ext-enable xdebug
+
 RUN yes "" | pecl install msgpack && \
 	docker-php-ext-enable msgpack
 
@@ -66,7 +71,21 @@ RUN pecl install apcu && \
 RUN pecl install redis && \
         docker-php-ext-enable redis
 
+#RUN pecl install php-redis && \
+#        docker-php-ext-enable php-redis
+
 RUN apt-get update -y && apt-get install -y apt-transport-https locales gnupg
+
+# install MSSQL support and ODBC driver
+# RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
+# 	curl https://packages.microsoft.com/config/debian/8/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
+# 	export DEBIAN_FRONTEND=noninteractive && apt-get update -y && \
+# 	ACCEPT_EULA=Y apt-get install -y msodbcsql unixodbc-dev
+# RUN set -xe \
+# 	&& pecl install pdo_sqlsrv \
+# 	&& docker-php-ext-enable pdo_sqlsrv \
+# 	&& apt-get purge -y unixodbc-dev && apt-get autoremove -y && apt-get clean
+
 # RUN docker-php-ext-configure spl && docker-php-ext-install spl
 
 # install GD
@@ -98,6 +117,11 @@ RUN php composer-setup.php --quiet && rm composer-setup.php && \
 	mv composer.phar /usr/local/sbin/composer && \
 	chmod +x /usr/local/sbin/composer
 
+
+# install SendGrid
+RUN echo "postfix postfix/mailname string localhost" | debconf-set-selections && \
+	echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections && \
+	DEBIAN_FRONTEND=noninteractive apt-get install postfix libsasl2-modules -y
 
 ADD configs/php.ini /usr/local/etc/php/
 ADD configs/www.conf /usr/local/etc/php-fpm.d/

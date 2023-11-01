@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 set -e
-syslog-ng
 dovecot
-#while true; do sleep 1; done
-
-# Keep tail process running to pipe Dovecot log to stdout.
+rsyslogd -n
 tail -F /var/log/mail.log

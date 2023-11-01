@@ -2,13 +2,13 @@
 set -e
 
 # Create virtual mailbox database
-postmap lmdb:/etc/postfix/vmailbox
+#postmap lmdb:/etc/postfix/vmailbox
 
 # The optional virtual(5) alias table rewrites recipient
 # addresses for all local, all virtual, and all remote  mail
 # destinations. This is unlike the aliases(5) table which
 # is used only for local(8) delivery.
-postmap lmdb:/etc/postfix/virtual
+#postmap lmdb:/etc/postfix/virtual
 
 # Rebuild the mail aliases database, /etc/aliases, after a change.
 newaliases
@@ -16,7 +16,10 @@ newaliases
 # Run Postfix master process. Do not redirect stdin, stdout
 # or stderr to /dev/null, and do not discard the controlling
 # terminal (-d).
-exec /usr/libexec/postfix/master -c /etc/postfix -d 2>&1
+rsyslogd
+postfix start
 
 # Keep tail process running to pipe Postfix log to stdout.
-tail -F /var/log/mail.log
+#tail -f /var/log/mail.log
+
+while true; do sleep 1; done
