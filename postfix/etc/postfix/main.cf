@@ -9,13 +9,13 @@
 
 # Whether or not to use the local biff service. This service sends "new mail"
 # notifications to users who have requested new mail notification with the
-# UNIX command "biff y". 
+# UNIX command "biff y".
 biff = no
 
 # Appending .domain is the MUA's job. Default: Postfix >= 3.0: no
 append_dot_mydomain = no
 
-# The internet domain name of this mail system. 
+# The internet domain name of this mail system.
 mydomain = andreybondarenko.com
 
 # The domain name that locally-posted mail appears to
@@ -55,7 +55,7 @@ mynetworks = 127.0.0.1/32 10.0.0.0/8
 smtpd_banner = $myhostname ESMTP $mail_name
 
 # The alias databases that are used for local(8) delivery. See aliases(5)
-# for syntax details. Adjust the file "etc/mail/aliases" which is 
+# for syntax details. Adjust the file "etc/mail/aliases" which is
 # included in my "kubernetes-postfix" Git repository accordingly.
 # Same is true for "$alias_database" (see next parameter).
 alias_maps = lmdb:/etc/mail/aliases
@@ -100,7 +100,7 @@ virtual_mailbox_domains = andreybondarenko.cm
 # can be overruled with the transport(5) table.
 # I use Archiveopteryx IMAP server. It listens on port 2026 (LMTP protocol) on one
 # of my PeerVPN addresses. As Postfix pod runs as a DaemonSet it has access to the
-# PeerVPN network and can connect to the LMTP port of Archiveopteryx to 
+# PeerVPN network and can connect to the LMTP port of Archiveopteryx to
 # finally deliver the mail addressed to one of the user of the virtual domains.
 # Replace www.xxx.yyy.zzz with the IP address of your LMTP server of course!
 #virtual_transport = lmtp:inet:www.xxx.yyy.zzz:2026
@@ -149,7 +149,7 @@ virtual_alias_maps = lmdb:/etc/postfix/virtual
 # server to provide two explicitly-selected (prime, generator) combinations.
 # One for the now long-obsolete "export" cipher suites, and another for
 # non-export cipher suites. Postfix has two such default combinations
-# compiled in, but also supports explicitly-configured overrides.  
+# compiled in, but also supports explicitly-configured overrides.
 # See: http://www.postfix.org/FORWARD_SECRECY_README.html
 #smtpd_tls_dh1024_param_file = ${config_directory}/dh2048.pem
 #smtpd_tls_dh512_param_file = ${config_directory}/dh512.pem
@@ -182,8 +182,8 @@ smtpd_helo_required = yes
 
 # Optional restrictions that the Postfix SMTP server applies in the context of
 # a client RCPT TO command, after smtpd_relay_restrictions. With "permit_mynetworks"
-# we allow hosts we defined in "$mynetworks" above to relay mail through this 
-# mailserver. The "reject_rbl_*/reject_rhsbl_*" directives specifies a few 
+# we allow hosts we defined in "$mynetworks" above to relay mail through this
+# mailserver. The "reject_rbl_*/reject_rhsbl_*" directives specifies a few
 # blacklists with served me very well over the last years to filter spam mail
 # (actually they work so good that I don't use any spam filter besides
 # Thunderbird's spam filter for the very few spam mails that get's through).

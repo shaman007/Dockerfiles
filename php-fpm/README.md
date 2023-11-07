@@ -195,4 +195,3 @@ turns on|off php error log to docker container stdout.
 
 -   Xdebug
 -   Zend OPcache
-
