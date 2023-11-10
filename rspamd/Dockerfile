@@ -4,10 +4,9 @@ RUN apt-get -y install \
   rspamd \
   ca-certificates \
   ssl-cert
-RUN apt-get -y install rsyslog
+# Clean up
+RUN apt-get remove -y git && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN mkdir /etc/service
 ADD run /etc/service
 RUN ln -sf /dev/stdout /var/log/mail.log
-# Clean up
-RUN apt-get remove -y git && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 ENTRYPOINT ["/etc/service/run"]

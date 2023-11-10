@@ -7,15 +7,13 @@ RUN apt install -y \
         postfix-pcre \
         sasl2-bin \
         postfix-lmdb \
-        rsyslog \
         ssl-cert \
         postfix-policyd-spf-perl
-COPY service/* /etc/service/
+COPY run /etc/service/
 COPY etc/postfix/main.cf /etc/postfix/main.cf
-COPY etc/aliases /etc/postfix
-RUN useradd shaman007
-RUN ln -sf /dev/stdout /var/log/mail.log
 # Clean up
 RUN apt-get remove -y git && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+COPY etc/aliases /etc/postfix
+RUN useradd shaman007
 STOPSIGNAL SIGKILL
 ENTRYPOINT ["/etc/service/run"]

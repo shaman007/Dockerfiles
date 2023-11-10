@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 set -e
 dovecot
-rsyslogd -n
+#rsyslogd -n
 tail -F /var/log/mail.log
