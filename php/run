@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -e
+
+php-fpm8.2 -R -F
+#tail -f /var/log/messages
+
+while true; do sleep 1; done;
