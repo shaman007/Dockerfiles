@@ -1,0 +1,11 @@
+#!/bin/bash
+
+
+# Generate a timestamp for the backup file
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+BACKUP_FILE="$OUTPUT_DIR/mysql_backup_$TIMESTAMP.sql"
+
+
+touch /$BACKUP_FILE
+/usr/bin/mysqldump --defaults-extra-file=$OUTPUT_DIR/my.cnf -u root -h $MYSQLHOST --all-databases --single-transaction --quick > $BACKUP_FILE
+echo "Backup completed successfully. Backup file: $BACKUP_FILE"

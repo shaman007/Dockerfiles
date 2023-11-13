@@ -1,0 +1,12 @@
+#!/bin/bash
+
+
+# Generate a timestamp for the backup file
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+BACKUP_FILE="$OUTPUT_DIR/redis_backup_$TIMESTAMP.rdb"
+
+# Use the `redis-cli` command to perform the backup
+touch /$BACKUP_FILE
+redis-cli -h "$REDIS_HOST" -p 6379 -a "$REDIS_PASSWORD" --rdb "/$BACKUP_FILE"
+
+echo "Backup completed successfully. Backup file: $BACKUP_FILE"
