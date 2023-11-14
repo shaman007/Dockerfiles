@@ -1,6 +1,5 @@
 FROM debian:latest
-RUN apt update
-RUN apt -y install php8.2-fpm \
+RUN apt update && apt -y install php8.2-fpm \
                    default-dbus-session-bus \
                    gpm \
                    file \
@@ -31,9 +30,7 @@ RUN apt -y install php8.2-fpm \
                    poppler-utils \
                    php8.2-cli \
                    php8.2-common \
-                   sudo
-RUN apt-get remove -y git && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-#STOPSIGNAL SIGKILL
+                   sudo && apt-get remove -y git && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 COPY run /etc/
 COPY www.conf /etc/php/8.2/fpm/pool.d/
 COPY opcache.ini /etc/php/8.2/mods-available
