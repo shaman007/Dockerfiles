@@ -1,4 +1,3 @@
 #!/usr/bin/env bash
 set -e
-#HELLO
 while true; do sleep 1; done;
