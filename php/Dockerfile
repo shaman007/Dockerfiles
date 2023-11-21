@@ -1,4 +1,4 @@
-FROM debian:latest
+FROM debian:stable-slim
 RUN apt update && apt -y install php8.2-fpm \
                    default-dbus-session-bus \
                    gpm \

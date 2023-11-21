@@ -1,4 +1,4 @@
-FROM debian:latest
+FROM debian:stable-slim
 RUN apt update && apt install rsyslog -y && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN echo '$ModLoad imudp \n\
 $UDPServerRun 514 \n\
