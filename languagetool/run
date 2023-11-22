@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+set -e
+/usr/bin/java -cp /languagetool/languagetool-server.jar org.languagetool.server.HTTPServer --port 8081 --allow-origin
