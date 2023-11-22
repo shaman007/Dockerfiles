@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 set -e
-/usr/bin/freshclam -d --foreground=true
+usr/bin/freshclam -d --foreground=true
+/usr/sbin/clamd --foreground=true
