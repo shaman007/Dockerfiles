@@ -4,7 +4,7 @@ RUN apt update && apt-get upgrade -y && \
     wget https://languagetool.org/download/LanguageTool-stable.zip && \
     unzip LanguageTool-stable.zip && \
     rm LanguageTool-stable.zip && \
-    mv -r LanguageTool-6.3 /languagetool && \
+    mv LanguageTool-6.3 /languagetool && \
     apt -y remove wget unzip && \
     apt-get autoremove -y && \
     apt-get clean && \
