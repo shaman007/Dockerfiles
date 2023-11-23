@@ -1,6 +1,6 @@
 # Dockerfiles
 
-Here I am keeping the dockerfiles I create or use for my projects.
+Here I am keeping the dockerfiles I create or use for my [projects](https://github.com/shaman007/home-k3s).
 
 - PHP-FPM with everything the Wordpress and Nextcloud need. Non-minimal!
 - Postfix container
@@ -8,3 +8,5 @@ Here I am keeping the dockerfiles I create or use for my projects.
 - Rspamd
 - Rsyslog
 - \*-cli images are used for backups
+- Clamav
+- Language tool that is not particulair useful, since it does not allow you to use Premium features
