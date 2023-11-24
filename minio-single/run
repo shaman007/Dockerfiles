@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -e
+/usr/local/bin/minio server
+while true; do sleep 1; done;
