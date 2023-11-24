@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -e
-/usr/local/bin/minio server $MINIO_DRIVE
+/usr/local/bin/minio server --console-address ":9090" $MINIO_DRIVE
 while true; do sleep 1; done;
