@@ -30,6 +30,7 @@ RUN apt update && apt -y install php8.2-fpm \
                    poppler-utils \
                    php8.2-cli \
                    php8.2-common \
+                   ffmpeg \
                    sudo && apt-get remove -y git && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 COPY run /etc/
 COPY www.conf /etc/php/8.2/fpm/pool.d/
