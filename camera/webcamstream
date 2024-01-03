@@ -1,6 +1,6 @@
 #!/bin/bash
-
+source /etc/env
 echo "Content-Type: multipart/x-mixed-replace;boundary=ffmpeg"
 echo "Cache-Control: no-cache"
 echo ""
-ffmpeg -rtsp_transport tcp -i "rtsp://$USER:$PASSWORD192.168.1.20:88/videoMain" -c:v mjpeg -q:v 1 -f mpjpeg -an -
+ffmpeg -rtsp_transport tcp -i "rtsp://$USER:$PASSWORD@192.168.1.20:88/videoMain" -c:v mjpeg -q:v 1 -f mpjpeg -an -

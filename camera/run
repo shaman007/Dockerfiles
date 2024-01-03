@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -e
-env
+echo @USER>/etc/env
+echo @PASSWORD>>/etc/env
 lighttpd -D -f /etc/lighttpd/lighttpd.conf
 while true; do sleep 1; done;
