@@ -5,4 +5,5 @@ COPY 10-cgi.conf /etc/lighttpd/conf-available/10-cgi.conf
 COPY webcamstream /var/www/cgi-bin/
 RUN chmod +x /var/www/cgi-bin/webcamstream
 COPY run /etc/
+RUN chmod +x /etc/run
 ENTRYPOINT ["/etc/run"]
