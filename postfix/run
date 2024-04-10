@@ -2,4 +2,4 @@
 set -e
 newaliases
 postfix start
-tail -f /var/log/mail.log
+while true; do sleep 1; done;
