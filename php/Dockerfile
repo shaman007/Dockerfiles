@@ -32,6 +32,7 @@ RUN apt update && apt -y install php-fpm \
                    php-common \
                    ffmpeg \
                    sudo && apt-get remove -y git && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN ln -sf /proc/1/fd/1 /var/log/php8.2-fpm.log
 COPY run /etc/
 COPY www.conf /etc/php/8.2/fpm/pool.d/
 COPY opcache.ini /etc/php/8.2/mods-available
