@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
 set -e
-newaliases
 postfix start
 while true; do sleep 1; done;

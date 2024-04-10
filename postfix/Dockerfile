@@ -13,5 +13,6 @@ COPY run /etc/service/
 COPY etc/postfix/main.cf /etc/postfix/main.cf
 COPY etc/aliases /etc/postfix
 RUN useradd shaman007
+RUN newaliases
 STOPSIGNAL SIGKILL
 ENTRYPOINT ["/etc/service/run"]
