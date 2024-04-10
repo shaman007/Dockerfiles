@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -e
 dovecot
-tail -F /var/log/mail.log
+while true; do sleep 1; done;
