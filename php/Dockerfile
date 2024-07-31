@@ -37,7 +37,7 @@ COPY run /etc/
 RUN  mkdir -p /etc/php/8.2/fpm/pool.d/
 COPY www.conf /etc/php/8.2/fpm/pool.d/
 COPY php.ini /etc/php/8.2/fpm/pool.d/
-RUN  mkdir -p /etc/php/8.2/fpm/mods-available
+RUN  mkdir -p /etc/php/8.2/mods-available
 COPY opcache.ini /etc/php/8.2/mods-available
 COPY apcu.ini /etc/php/8.2/mods-available
 ENTRYPOINT ["/etc/run"]
