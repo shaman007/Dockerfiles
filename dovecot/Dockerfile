@@ -14,6 +14,7 @@ RUN apt-get -y update && apt-get -y install \
   dovecot-solr \
   dovecot-sqlite \
   dovecot-submissiond \
+  vim-tiny \
   ca-certificates \
   ssl-cert && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN ln -sf /proc/1/fd/1 /var/log/mail.log
