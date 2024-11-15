@@ -10,7 +10,7 @@ RUN apt update && apt-get upgrade -y && \
 WORKDIR /photon
 ADD https://github.com/komoot/photon/releases/download/0.6.0/photon-0.6.0.jar /photon/photon.jar
 COPY entrypoint.sh ./entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x ./entrypoint.sh
 VOLUME /photon/photon_data
 EXPOSE 2322
 
