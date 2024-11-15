@@ -1,4 +1,4 @@
-FROM openjdk:9-jre-slim
+FROM openjdk:24-slim-bullseye⁠
 
 # Install pbzip2 for parallel extraction
 RUN apt update && apt-get upgrade -y && \
