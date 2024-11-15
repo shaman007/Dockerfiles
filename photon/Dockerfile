@@ -1,11 +1,11 @@
 FROM openjdk:latest
 
 # Install pbzip2 for parallel extraction
-RUN apt-get update \
-    && apt-get -y install \
-        pbzip2 \
-        wget \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt update && apt-get upgrade -y && \
+    apt-get -y install wget pbzip2 curl vim && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 WORKDIR /photon
 ADD https://github.com/komoot/photon/releases/download/0.6.0/photon-0.6.0.jar /photon/photon.jar
