@@ -14,4 +14,4 @@ COPY entrypoint.sh ./entrypoint.sh
 VOLUME /photon/photon_data
 EXPOSE 2322
 
-ENTRYPOINT /photon/entrypoint.sh
+ENTRYPOINT ["/photon/entrypoint.sh"]
