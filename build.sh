@@ -9,7 +9,7 @@ for app in "${apps[@]}"
 do
   cd $app
   echo "-------- BUILDING $registry/$app:$label --------"
-  docker build -t $registry/$app:$label .
+  docker buildx build --platform linux/amd64,linux/arm64 -t $registry/$app:$label .  
   echo "-------- PUSHING $registry/$app:$label --------"
   docker push $registry/$app:$label
   cd ..
