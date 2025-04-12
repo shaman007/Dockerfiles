@@ -1,4 +1,4 @@
-FROM debian:stable-slim
+FROM docker.io/library/debian:stable-slim
 RUN apt update && apt-get upgrade -y && \
     apt-get -y install clamav clamav-daemon dumb-init && \
     apt-get autoremove -y && \

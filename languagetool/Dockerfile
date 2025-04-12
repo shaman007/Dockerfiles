@@ -1,4 +1,4 @@
-FROM debian:stable-slim
+FROM docker.io/library/debian:stable-slim
 RUN apt update && apt-get upgrade -y && \
     apt-get -y install default-jre wget dumb-init unzip
 #Have to split layers, so my registry can consume them
