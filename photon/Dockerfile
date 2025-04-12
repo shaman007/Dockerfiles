@@ -1,7 +1,7 @@
 FROM openjdk:24-slim-bullseye
 
 # Install pbzip2 for parallel extraction
-RUN apt update && apt-get upgrade -y && \
+RUN apt-get update && apt-get upgrade -y && \
     apt-get -y install wget bzip2 curl dumb-init && \
     apt-get autoremove -y && \
     apt-get clean && \

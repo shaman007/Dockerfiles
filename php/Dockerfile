@@ -1,5 +1,5 @@
 FROM docker.io/library/debian:stable-slim
-RUN apt update && apt -y install php-fpm \
+RUN apt-get update && apt-get-y install php-fpm \
                    default-dbus-session-bus \
                    gpm \
                    file \

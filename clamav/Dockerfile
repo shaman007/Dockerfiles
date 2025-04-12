@@ -1,5 +1,5 @@
 FROM docker.io/library/debian:stable-slim
-RUN apt update && apt-get upgrade -y && \
+RUN apt-get update && apt-get upgrade -y && \
     apt-get -y install clamav clamav-daemon dumb-init && \
     apt-get autoremove -y && \
     apt-get clean && \
