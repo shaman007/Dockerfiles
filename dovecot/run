@@ -1,4 +1,3 @@
 #!/usr/bin/env bash
 set -e
-dovecot
-while true; do sleep 1; done;
+exec /usr/sbin/dovecot -F
