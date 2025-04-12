@@ -1,6 +1,6 @@
 FROM docker.io/library/debian:stable-slim
 
-RUN apt-get update && apt-getinstall -y \
+RUN apt-get update && apt-get install -y \
         ca-certificates \
         postfix \
         postfix-pcre \

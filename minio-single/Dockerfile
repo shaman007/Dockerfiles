@@ -1,7 +1,7 @@
 FROM docker.io/library/debian:stable-slim
 
 # Install necessary dependencies
-RUN apt-get update && apt-getinstall -y wget dumb-init
+RUN apt-get update && apt-get install -y wget dumb-init
 
 # Set architecture variable
 RUN ARCH=$(dpkg --print-architecture) && \
