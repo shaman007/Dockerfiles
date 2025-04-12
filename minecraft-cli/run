@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
-set -e
-while true; do sleep 10; done;
+set -euo pipefail
+echo "Container started. Sleeping forever..."
+exec tail -f /dev/null
