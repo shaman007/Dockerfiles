@@ -20,5 +20,5 @@ RUN apt-get -y update && apt-get -y install \
 RUN ln -sf /proc/1/fd/1 /var/log/mail.log
 RUN mkdir /etc/service
 RUN useradd shaman007 -d /var/mail/boxes/shaman007
-ADD run /etc/service
+COPY run /etc/service
 ENTRYPOINT ["/etc/service/run"]
