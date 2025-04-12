@@ -3,4 +3,3 @@ set -e
 echo "USER=$USER">/etc/env
 echo "PASSWORD=$PASSWORD">>/etc/env
 lighttpd -D -f /etc/lighttpd/lighttpd.conf
-while true; do sleep 1; done;
