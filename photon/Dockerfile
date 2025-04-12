@@ -2,7 +2,7 @@ FROM openjdk:24-slim-bullseye
 
 # Install pbzip2 for parallel extraction
 RUN apt update && apt-get upgrade -y && \
-    apt-get -y install wget bzip2 curl vim && \
+    apt-get -y install wget bzip2 curl dumb-init && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
@@ -14,4 +14,4 @@ RUN chmod +x ./entrypoint.sh
 VOLUME /photon/photon_data
 EXPOSE 2322
 
-ENTRYPOINT ["/photon/entrypoint.sh"]
+ENTRYPOINT ["dumb-init", "--", "/photon/entrypoint.sh"]
