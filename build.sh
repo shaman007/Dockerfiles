@@ -10,8 +10,13 @@ git pull
 timestamp=$(date +"%Y-%m-%d-%H%M")
 
 # Define variables
-apps=( $(ls -la | grep '^d' | grep -v '\.\{1,2\}$' | awk '{ print $9 }') )
 registry="harbor.andreybondarenko.com"
+apps=()
+
+# Collect only non-hidden directories
+for dir in */; do
+  [[ -d "$dir" && "$dir" != .* ]] && apps+=( "${dir%/}" )
+done
 
 # Loop through all app directories
 for app in "${apps[@]}"; do
