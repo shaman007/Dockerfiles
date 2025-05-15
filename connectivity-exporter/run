@@ -1,2 +1,2 @@
-set -euo pipefail
+#set -euo pipefail
 exec python /app/connectivity-exporter.py --config /app/config.yaml
