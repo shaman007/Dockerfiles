@@ -32,6 +32,7 @@ RUN apt-get update && apt-get -y install php-fpm \
                    php-common \
                    ffmpeg \
                    dumb-init \
+                   libimage-exiftool-perl \
                    sudo && apt-get remove -y git && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN ln -sf /proc/1/fd/1 /var/log/php8.2-fpm.log
 COPY run /etc/
