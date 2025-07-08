@@ -63,7 +63,7 @@ jobs:
                 --build-arg BUILDKIT_INLINE_CACHE=1 \
                 --output=type=image,name="$image",push=true)
 
-            digest=$(echo "$output" | grep -o 'sha256:[a-f0-9]\{64\}' | head -n1)
+            digest=$(echo "$output" | grep -o 'sha256:[a-f0-9]\{64\}')
             ref="${REGISTRY}/shaman007/${name}@${digest}"
             echo "Signing $ref"
             cosign sign --yes "$ref"
