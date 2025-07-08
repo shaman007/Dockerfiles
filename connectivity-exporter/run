@@ -1,1 +1,1 @@
-exec python /app/connectivity-exporter.py --config /app/config.yaml
+exec python /app/check.py --config /app/config.yaml

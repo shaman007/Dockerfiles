@@ -3,8 +3,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install dumb-init -y && apt-
 RUN pip install --no-cache-dir prometheus_client pyyaml flask
 COPY run /etc
 RUN chmod +x /etc/run
-WORKDIR /app
-ADD https://raw.githubusercontent.com/shaman007/connectivity-exporter/refs/heads/main/connectivity-exporter.py .
-COPY config.yaml .
+ADD https://raw.githubusercontent.com/shaman007/connectivity-exporter/refs/heads/main/check.py /app
+COPY config.yaml /app
 STOPSIGNAL SIGKILL
 ENTRYPOINT ["dumb-init", "--", "/etc/run"]
