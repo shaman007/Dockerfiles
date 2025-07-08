@@ -68,8 +68,6 @@ jobs:
                 --output=type=image,name="$image",push=true)
             digest=$(skopeo inspect --creds "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" docker://$image | jq -r '.Digest')
             ref="${image%%:*}@$digest"
-            #digest=$(echo "$output" | grep -o 'sha256:[a-f0-9]\{64\}')
-            #ref="${REGISTRY}/shaman007/${name}@${digest}"
             echo "Signing $ref"
             cosign sign --yes "$ref"
             
