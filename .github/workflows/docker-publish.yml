@@ -54,16 +54,18 @@ jobs:
             image="${REGISTRY}/shaman007/${name}:latest"
             
             echo "Building ${image} from ${dir}"
-            docker buildx build "$dir" \
-              --tag "$image" \
-              --push="${PUSH}" \
-              --cache-from type=gha \
-              --cache-to type=gha,mode=max \
-              --provenance=false
+              output=$(docker buildx build "$dir" \
+                --tag "$image" \
+                --push="$PUSH" \
+                --cache-from type=gha \
+                --cache-to type=gha,mode=max \
+                --provenance=false \
+                --build-arg BUILDKIT_INLINE_CACHE=1 \
+                --output=type=image,name="$image",push=true)
 
-            if [ "$PUSH" = "true" ]; then
-              ref=$(cosign triangulate "$image")
-              echo "Signing $ref"
-              cosign sign --yes "$ref"
-            fi
+            digest=$(echo "$output" | grep -o 'sha256:[a-f0-9]\{64\}' | head -n1)
+            ref="${REGISTRY}/shaman007/${name}@${digest}"
+            echo "Signing $ref"
+            cosign sign --yes "$ref"
+            
           done
