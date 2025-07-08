@@ -1,0 +1,69 @@
+name: Docker Multi
+
+on:
+  schedule:
+    - cron: '29 2 * * *'
+  push:
+    branches: [ "main" ]
+    tags: [ 'v*.*.*' ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install cosign
+        if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@v3.5.0
+        with:
+          cosign-release: 'v2.2.4'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log into GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build, push, and sign each Dockerfile
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          PUSH: ${{ github.event_name != 'pull_request' }}
+        run: |
+          for dockerfile in $(find . -mindepth 2 -maxdepth 2 -name Dockerfile); do
+            dir=$(dirname "$dockerfile")
+            name=$(basename "$dir")
+            image="${REGISTRY}/${IMAGE_NAME}-${name}:latest"
+            
+            echo "Building ${image} from ${dir}"
+            docker buildx build "$dir" \
+              --tag "$image" \
+              --push="${PUSH}" \
+              --cache-from type=gha \
+              --cache-to type=gha,mode=max \
+              --provenance=false
+
+            if [ "$PUSH" = "true" ]; then
+              digest=$(docker buildx imagetools inspect "$image" --format '{{.Digest}}')
+              echo "Signing ${image}@${digest}"
+              cosign sign --yes "${image}@${digest}"
+            fi
+          done
