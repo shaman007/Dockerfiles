@@ -62,7 +62,7 @@ jobs:
               --provenance=false
 
             if [ "$PUSH" = "true" ]; then
-              digest=$(docker buildx imagetools inspect "$image" --format '{{.Digest}}')
+              digest=$(cosign triangulate "$image")
               echo "Signing ${image}@${digest}"
               cosign sign --yes "${image}@${digest}"
             fi
