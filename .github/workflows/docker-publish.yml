@@ -51,7 +51,7 @@ jobs:
           for dockerfile in $(find . -mindepth 2 -maxdepth 2 -name Dockerfile); do
             dir=$(dirname "$dockerfile")
             name=$(basename "$dir")
-            image="${REGISTRY}/${IMAGE_NAME}-${name}:latest"
+            image="${REGISTRY}/${name}:latest"
             
             echo "Building ${image} from ${dir}"
             docker buildx build "$dir" \
