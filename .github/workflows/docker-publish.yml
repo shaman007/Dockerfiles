@@ -62,8 +62,8 @@ jobs:
               --provenance=false
 
             if [ "$PUSH" = "true" ]; then
-              digest=$(cosign triangulate "$image"| cut -d@ -f2)
-              echo "Signing ${image}@${digest}"
-              cosign sign --yes "${image}@${digest}"
+              ref=$(cosign triangulate "$image")
+              echo "Signing $ref"
+              cosign sign --yes "$ref"
             fi
           done
