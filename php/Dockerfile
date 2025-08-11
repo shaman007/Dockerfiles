@@ -7,7 +7,7 @@ RUN apt-get update && apt-get -y install php-fpm \
                    libfido2-1 \
                    libqrencode4 \
                    libtss2-esys-3.0.2-0 \
-                   libtss2-mu \
+                   libtss2-mu-4.0.1-0t64 \
                    libtss2-rc0 \
                    php-opcache \
                    php-redis \
