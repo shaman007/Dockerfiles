@@ -7,7 +7,7 @@ RUN apt-get update && apt-get -y install php-fpm \
                    libfido2-1 \
                    libqrencode4 \
                    libtss2-esys-3.0.2-0 \
-                   libtss2-mu0 \
+                   libtss2-mu \
                    libtss2-rc0 \
                    php-opcache \
                    php-redis \
@@ -26,7 +26,7 @@ RUN apt-get update && apt-get -y install php-fpm \
                    libgd-tools \
                    low-memory-monitor \
                    liblcms2-utils \
-                   libmagickcore-6.q16-6-extra \
+                   libmagickcore-7.q16-10-extra \
                    poppler-utils \
                    php-cli \
                    php-common \
