@@ -34,10 +34,10 @@ RUN apt-get update && apt-get -y install php-fpm \
                    dumb-init \
                    libimage-exiftool-perl \
                    sudo && apt-get remove -y git && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-RUN ln -sf /proc/1/fd/1 /var/log/php8.2-fpm.log
+RUN ln -sf /proc/1/fd/1 /var/log/php8.4-fpm.log
 COPY run /etc/
-RUN  mkdir -p /etc/php/8.2/fpm/pool.d/
-COPY php.ini /etc/php/8.2/fpm/pool.d/
-RUN  mkdir -p /etc/php/8.2/mods-available
-COPY apcu.ini /etc/php/8.2/mods-available
+RUN  mkdir -p /etc/php/8.4/fpm/pool.d/
+COPY php.ini /etc/php/8.4/fpm/pool.d/
+RUN  mkdir -p /etc/php/8.4/mods-available
+COPY apcu.ini /etc/php/8.4/mods-available
 ENTRYPOINT ["dumb-init", "--", "/etc/run"]
