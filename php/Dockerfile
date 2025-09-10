@@ -35,6 +35,7 @@ RUN apt-get update && apt-get -y install php-fpm \
                    libimage-exiftool-perl \
                    sudo && apt-get remove -y git && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN ln -sf /proc/1/fd/1 /var/log/php8.4-fpm.log
+RUN usermod -aG clock www-data
 COPY run /etc/
 RUN  mkdir -p /etc/php/8.4/fpm/pool.d/
 COPY php.ini /etc/php/8.4/fpm/pool.d/
