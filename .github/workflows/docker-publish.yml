@@ -55,18 +55,18 @@ jobs:
             dir=$(dirname "$dockerfile")
             name=$(basename "$dir")
             image="${REGISTRY}/shaman007/${name}:latest"
-            
             echo "Building ${image} from ${dir}"
-              output=$(docker buildx build "$dir" \
-                --platform linux/amd64,linux/arm64 \
-                --tag "$image" \
-                --push="$PUSH" \
-                --cache-from type=gha \
-                --cache-to type=gha,mode=max \
-                --provenance=false \
-                --build-arg BUILDKIT_INLINE_CACHE=1 \
-                --output=type=image,name="$image",push=true)
-            digest=$(skopeo inspect --creds "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" docker://$image | jq -r '.Digest')
+            docker buildx build "$dir" \
+              --platform linux/amd64,linux/arm64 \
+              --tag "$image" \
+              --provenance=false \
+              --cache-from type=gha \
+              --cache-to type=gha,mode=max \
+              --build-arg BUILDKIT_INLINE_CACHE=1 \
+              $([[ "${{ github.event_name }}" != 'pull_request' ]] && echo --push)
+          
+            # Get the manifest digest from buildx (more reliable than skopeo+tag race)
+            digest=$(docker buildx imagetools inspect "$image" --format '{{json .Manifest.Digest}}' | tr -d '"')
             ref="${image%%:*}@$digest"
             echo "Signing $ref"
             cosign sign --yes "$ref"
