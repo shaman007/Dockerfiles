@@ -32,6 +32,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update &&\
                    php-cli \
                    php-common \
                    ffmpeg \
+                   sudo \
                    dumb-init \
                    libimage-exiftool-perl \
                    && DEBIAN_FRONTEND=noninteractive apt-get remove -y git &&\
