@@ -1,8 +1,9 @@
 FROM docker.io/library/debian:stable-slim
-RUN apt-get update && apt-get upgrade -y && \
-    apt-get -y install clamav clamav-daemon dumb-init && \
-    apt-get autoremove -y && \
-    apt-get clean && \
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get -y install clamav clamav-daemon dumb-init && \
+    DEBIAN_FRONTEND=noninteractive apt-get autoremove -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 COPY run /etc/
 RUN mkdir /var/run/clamav && \
