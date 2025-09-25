@@ -1,7 +1,8 @@
 FROM docker.io/library/debian:stable-slim
 
 # Install necessary dependencies
-RUN apt-get update && apt-get install -y wget dumb-init
+RUN DEBIAN_FRONTEND=noninteractive apt-get update &&\
+    DEBIAN_FRONTEND=noninteractive apt-get install -y wget dumb-init
 
 # Set architecture variable
 RUN ARCH=$(dpkg --print-architecture) && \
@@ -24,7 +25,10 @@ RUN ARCH=$(dpkg --print-architecture) && \
     fi
 
 # Clean up unnecessary files
-RUN apt-get -y remove wget && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y remove wget &&\
+    DEBIAN_FRONTEND=noninteractive apt-get autoremove -y &&\
+    DEBIAN_FRONTEND=noninteractive apt-get clean &&\
+    DEBIAN_FRONTEND=noninteractive rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Copy your custom script to the container
 COPY run /etc/

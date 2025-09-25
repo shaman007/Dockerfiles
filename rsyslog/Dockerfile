@@ -1,5 +1,8 @@
 FROM docker.io/library/debian:stable-slim
-RUN apt-get update && apt-get install rsyslog -y && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN DEBIAN_FRONTEND=noninteractive apt-get update &&\
+    DEBIAN_FRONTEND=noninteractive apt-get install rsyslog -y &&\
+    DEBIAN_FRONTEND=noninteractive apt-get autoremove -y &&\
+    DEBIAN_FRONTEND=noninteractive apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN echo '$ModLoad imudp \n\
 $UDPServerRun 514 \n\
 $ModLoad imtcp \n\

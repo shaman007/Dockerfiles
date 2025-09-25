@@ -1,5 +1,6 @@
 FROM docker.io/library/debian:stable-slim
-RUN apt-get update && apt-get -y install php-fpm \
+RUN DEBIAN_FRONTEND=noninteractive apt-get update &&\
+    DEBIAN_FRONTEND=noninteractive apt-get -y install php-fpm \
                    default-dbus-session-bus \
                    gpm \
                    file \
@@ -33,7 +34,9 @@ RUN apt-get update && apt-get -y install php-fpm \
                    ffmpeg \
                    dumb-init \
                    libimage-exiftool-perl \
-                   sudo && apt-get remove -y git && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+                   && DEBIAN_FRONTEND=noninteractive apt-get remove -y git &&\
+                   DEBIAN_FRONTEND=noninteractive apt-get autoremove -y &&\
+                   DEBIAN_FRONTEND=noninteractive apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN ln -sf /proc/1/fd/1 /var/log/php8.4-fpm.log
 RUN usermod -aG clock www-data
 COPY run /etc/

@@ -1,5 +1,6 @@
 FROM docker.io/library/debian:stable-slim
-RUN apt-get -y update && apt-get -y install \
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y update &&\
+  DEBIAN_FRONTEND=noninteractive apt-get -y install \
   dovecot-core \
   dovecot-gssapi \
   dovecot-imapd \
@@ -17,7 +18,10 @@ RUN apt-get -y update && apt-get -y install \
   vim-tiny \
   ca-certificates \
   dumb-init \
-  ssl-cert && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+  ssl-cert &&\
+  DEBIAN_FRONTEND=noninteractive apt-get autoremove -y &&\
+  DEBIAN_FRONTEND=noninteractive apt-get clean &&\
+  DEBIAN_FRONTEND=noninteractive rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN ln -sf /proc/1/fd/1 /var/log/maillog
 RUN mkdir /etc/service
 RUN useradd shaman007 -d /var/mail/boxes/shaman007

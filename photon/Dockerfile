@@ -1,10 +1,10 @@
 FROM openjdk:24-slim-bullseye
 
 # Install pbzip2 for parallel extraction
-RUN apt-get update && apt-get upgrade -y && \
-    apt-get -y install wget bzip2 curl dumb-init && \
-    apt-get autoremove -y && \
-    apt-get clean && \
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get upgrade -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get -y install wget bzip2 curl dumb-init && \
+    DEBIAN_FRONTEND=noninteractive apt-get autoremove -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 WORKDIR /photon
