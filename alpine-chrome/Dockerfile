@@ -1,28 +1,51 @@
-FROM alpine:3.22.2
+FROM alpine:3.22
 
-# Installs latest Chromium package.
-RUN apk upgrade --no-cache --available \
-    && apk add --no-cache \
+# Chromium + deps (nss needed), SwiftShader, fonts
+RUN apk add --no-cache \
+      chromium \
+      nss \
       chromium-swiftshader \
       ttf-freefont \
       font-noto-emoji \
-    && apk add --no-cache \
-      --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community \
-      font-wqy-zenhei
+      font-wqy-zenhei \
+      ca-certificates dumb-init && \
+    update-ca-certificates
 
-COPY local.conf /etc/fonts/local.conf
+# Optional font tweaks (keep if you have it)
+# COPY local.conf /etc/fonts/local.conf
 
-# Add Chrome as a user
-RUN mkdir -p /usr/src/app \
-    && adduser -D chrome \
-    && chown -R chrome:chrome /usr/src/app
-# Run Chrome as non-privileged
+# Non-root user + writable profile dir
+RUN adduser -D -h /home/chrome chrome && \
+    mkdir -p /data/profile /usr/src/app && \
+    chown -R chrome:chrome /data /usr/src/app /home/chrome
 USER chrome
 WORKDIR /usr/src/app
 
 ENV CHROME_BIN=/usr/bin/chromium-browser \
-    CHROME_PATH=/usr/lib/chromium/
+    CHROME_PATH=/usr/lib/chromium/ \
+    # Silence dbus probes
+    DBUS_SYSTEM_BUS_ADDRESS=disabled: \
+    DBUS_SESSION_BUS_ADDRESS=disabled: \
+    # Extra flags you may want to append
+    CHROMIUM_FLAGS=""
 
-# Autorun chrome headless
-ENV CHROMIUM_FLAGS="--disable-software-rasterizer --disable-dev-shm-usage"
-ENTRYPOINT ["chromium-browser", "--headless"]
+EXPOSE 9222
+
+ENTRYPOINT ["/usr/bin/dumb-init","--"]
+CMD ["/bin/sh","-lc", "\
+exec \"$CHROME_BIN\" \
+  --no-sandbox \
+  --headless=new \
+  --remote-debugging-address=0.0.0.0 \
+  --remote-debugging-port=9222 \
+  --user-data-dir=/data/profile \
+  --no-first-run \
+  --no-default-browser-check \
+  --disable-gpu \
+  --disable-gpu-compositing \
+  --disable-vulkan \
+  --use-angle=swiftshader \
+  --use-gl=swiftshader \
+  --disable-features=MediaRouter,Translate,OnDeviceModel,OptimizationHints,OptimizationGuideModelDownloading \
+  $CHROMIUM_FLAGS \
+"]
