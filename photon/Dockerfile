@@ -1,4 +1,4 @@
-FROM openjdk:24-slim-bullseye
+FROM semeru-runtimes:open-24-jre
 
 # Install pbzip2 for parallel extraction
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get upgrade -y && \
