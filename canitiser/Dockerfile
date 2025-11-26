@@ -32,4 +32,4 @@ RUN useradd -r -u 10001 -g users scanner && \
     chown -R scanner:users /app
 USER scanner
 ENTRYPOINT ["python"]
-CMD ["ca-nitiser.py", "--help"]
+CMD ["ca-nitiser-k8s.py", "--help"]
