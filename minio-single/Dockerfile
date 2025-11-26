@@ -4,7 +4,7 @@ FROM docker.io/library/debian:stable-slim
 #DL3009 misfires
 #hadolint ignore=DL3008,DL3009
 RUN DEBIAN_FRONTEND=noninteractive apt-get update &&\
-    DEBIAN_FRONTEND=noninteractive apt-get install -y wget dumb-init --no-install-recommends
+    DEBIAN_FRONTEND=noninteractive apt-get install -y wget dumb-init ca-certificates --no-install-recommends
 
 # Set architecture variable
 RUN ARCH=$(dpkg --print-architecture) && \
