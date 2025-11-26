@@ -1,6 +1,8 @@
 FROM docker.io/library/debian:stable-slim
+#hadolint ignore=DL3008
 RUN DEBIAN_FRONTEND=noninteractive apt-get update &&\
-    DEBIAN_FRONTEND=noninteractive apt-get -y install php-fpm \
+    DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install -- \
+                   php-fpm \
                    default-dbus-session-bus \
                    gpm \
                    file \
@@ -34,12 +36,12 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update &&\
                    ffmpeg \
                    sudo \
                    dumb-init \
-                   libimage-exiftool-perl \
-                   && DEBIAN_FRONTEND=noninteractive apt-get remove -y git &&\
+                   libimage-exiftool-perl && \
+                   DEBIAN_FRONTEND=noninteractive apt-get remove -y git &&\
                    DEBIAN_FRONTEND=noninteractive apt-get autoremove -y &&\
-                   DEBIAN_FRONTEND=noninteractive apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-RUN ln -sf /proc/1/fd/1 /var/log/php8.4-fpm.log
-RUN usermod -aG clock www-data
+                   DEBIAN_FRONTEND=noninteractive apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
+                   ln -sf /proc/1/fd/1 /var/log/php8.4-fpm.log &&\
+                   usermod -aG clock www-data
 COPY run /etc/
 RUN  mkdir -p /etc/php/8.4/fpm/pool.d/
 COPY php.ini /etc/php/8.4/fpm/pool.d/

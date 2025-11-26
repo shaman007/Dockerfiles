@@ -1,4 +1,5 @@
 FROM docker.io/library/debian:stable-slim
+#hadolint ignore=DL3008
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y update &&\
   DEBIAN_FRONTEND=noninteractive apt-get -y install \
   dovecot-core \
@@ -18,12 +19,12 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get -y update &&\
   vim-tiny \
   ca-certificates \
   dumb-init \
-  ssl-cert &&\
+  ssl-cert --no-install-recommends &&\
   DEBIAN_FRONTEND=noninteractive apt-get autoremove -y &&\
   DEBIAN_FRONTEND=noninteractive apt-get clean &&\
-  DEBIAN_FRONTEND=noninteractive rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-RUN ln -sf /proc/1/fd/1 /var/log/maillog
-RUN mkdir /etc/service
-RUN useradd shaman007 -d /var/mail/boxes/shaman007
+  DEBIAN_FRONTEND=noninteractive rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* &&\
+  ln -sf /proc/1/fd/1 /var/log/maillog && \
+  mkdir /etc/service && \
+  useradd shaman007 -d /var/mail/boxes/shaman007
 COPY run /etc/service
 ENTRYPOINT ["dumb-init", "--", "/etc/service/run"]

@@ -1,8 +1,10 @@
 FROM python:3.11-slim
-RUN DEBIAN_FRONTEND=noninteractive apt-get update &&\ 
-    DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && apt-get install dumb-init -y &&\
+#hadolint ignore=DL3008
+RUN DEBIAN_FRONTEND=noninteractive apt-get update &&\
+    DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && apt-get install dumb-init -y --no-install-recommends &&\
     DEBIAN_FRONTEND=noninteractive apt-get autoremove -y &&\
     DEBIAN_FRONTEND=noninteractive apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+#hadolint ignore=DL3013
 RUN pip install --no-cache-dir prometheus_client pyyaml flask
 COPY run /etc
 RUN chmod +x /etc/run

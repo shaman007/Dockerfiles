@@ -1,6 +1,7 @@
 FROM alpine:3.22
 
 # Chromium + deps (nss needed), SwiftShader, fonts
+# hadolint ignore=DL3018
 RUN apk add --no-cache \
       chromium \
       nss \

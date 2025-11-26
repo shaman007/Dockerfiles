@@ -1,8 +1,8 @@
 FROM ibm-semeru-runtimes:open-24-jre
 
-# Install pbzip2 for parallel extraction
+#hadolint ignore=DL3008
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get upgrade -y && \
-    DEBIAN_FRONTEND=noninteractive apt-get -y install wget bzip2 curl dumb-init && \
+    DEBIAN_FRONTEND=noninteractive apt-get -y install wget bzip2 curl dumb-init --no-install-recommends && \
     DEBIAN_FRONTEND=noninteractive apt-get autoremove -y && \
     DEBIAN_FRONTEND=noninteractive apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
