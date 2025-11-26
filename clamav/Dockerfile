@@ -2,7 +2,7 @@ FROM docker.io/library/debian:stable-slim
 #hadolint ignore=DL3008
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
-    DEBIAN_FRONTEND=noninteractive apt-get -y install clamav clamav-daemon dumb-init --no-install-recommends && \
+    DEBIAN_FRONTEND=noninteractive apt-get -y install clamav clamav-daemon dumb-init ca-certificates --no-install-recommends && \
     DEBIAN_FRONTEND=noninteractive apt-get autoremove -y && \
     DEBIAN_FRONTEND=noninteractive apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
