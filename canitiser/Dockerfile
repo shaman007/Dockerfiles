@@ -25,7 +25,7 @@ RUN set -eux; \
     curl -L "https://dl.k8s.io/release/${KVER}/bin/linux/${KARCH}/kubectl" -o /usr/local/bin/kubectl && \
     chmod +x /usr/local/bin/kubectl && \
     curl -l https://raw.githubusercontent.com/shaman007/CAnitiser/refs/heads/main/ca-analyse.py -o /app/ca-analyse.py && \
-    curl -l https://raw.githubusercontent.com/shaman007/CAnitiser/refs/heads/main/ca-nitiser.py -o ca-nitiser.py && \
+    curl -l https://raw.githubusercontent.com/shaman007/CAnitiser/refs/heads/main/ca-nitiser.py -o ca-nitiser-k8s.py && \
     curl -l https://raw.githubusercontent.com/shaman007/CAnitiser/refs/heads/main/ca-report-html.py -o /app/ca-report-html.py && \
     curl -l https://raw.githubusercontent.com/shaman007/CAnitiser/refs/heads/main/ca-report-html.py -o /app/ca-report-html.py
 RUN useradd -r -u 10001 -g users scanner && \
