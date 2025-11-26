@@ -6,6 +6,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         curl \
         ca-certificates && \
+    pip install --no-cache-dir kubernetes && \
     rm -rf /var/lib/apt/lists/*
 ARG KUBECTL_VERSION=latest
 RUN set -eux; \
