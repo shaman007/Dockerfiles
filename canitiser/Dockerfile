@@ -24,10 +24,10 @@ RUN set -eux; \
     fi; \
     curl -L "https://dl.k8s.io/release/${KVER}/bin/linux/${KARCH}/kubectl" -o /usr/local/bin/kubectl && \
     chmod +x /usr/local/bin/kubectl && \
-    curl -l https://github.com/shaman007/CAnitiser/blob/af98f7149963db3c8f8af4fa80eb25f27047f999/ca-analyse.py -o /app/ca-analyse.py && \
-    curl -l https://github.com/shaman007/CAnitiser/blob/af98f7149963db3c8f8af4fa80eb25f27047f999/ca-nitiser.py -o ca-nitiser.py && \
-    curl -l https://github.com/shaman007/CAnitiser/blob/af98f7149963db3c8f8af4fa80eb25f27047f999/ca-report-html.py -o /app/ca-report-html.py && \
-    curl -l https://github.com/shaman007/CAnitiser/blob/af98f7149963db3c8f8af4fa80eb25f27047f999/ca-report-html.py -o /app/ca-report-html.py
+    curl -l https://raw.githubusercontent.com/shaman007/CAnitiser/refs/heads/main/ca-analyse.py -o /app/ca-analyse.py && \
+    curl -l https://raw.githubusercontent.com/shaman007/CAnitiser/refs/heads/main/ca-nitiser.py -o ca-nitiser.py && \
+    curl -l https://raw.githubusercontent.com/shaman007/CAnitiser/refs/heads/main/ca-report-html.py -o /app/ca-report-html.py && \
+    curl -l https://raw.githubusercontent.com/shaman007/CAnitiser/refs/heads/main/ca-report-html.py -o /app/ca-report-html.py
 RUN useradd -r -u 10001 -g users scanner && \
     chown -R scanner:users /app
 USER scanner
