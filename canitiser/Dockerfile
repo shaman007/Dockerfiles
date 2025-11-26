@@ -9,12 +9,20 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 ARG KUBECTL_VERSION=latest
 RUN set -eux; \
+    # determine arch
+    ARCH="$(dpkg --print-architecture)"; \
+    case "$ARCH" in \
+        amd64)  KARCH="amd64" ;; \
+        arm64)  KARCH="arm64" ;; \
+        *) echo "Unsupported arch: $ARCH" >&2; exit 1 ;; \
+    esac; \
+    \
     if [ "$KUBECTL_VERSION" = "latest" ]; then \
       KVER="$(curl -L -s https://dl.k8s.io/release/stable.txt)"; \
     else \
       KVER="v${KUBECTL_VERSION}"; \
     fi; \
-    curl -L "https://dl.k8s.io/release/${KVER}/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && \
+    curl -L "https://dl.k8s.io/release/${KVER}/bin/linux/${KARCH}/kubectl" -o /usr/local/bin/kubectl && \
     chmod +x /usr/local/bin/kubectl && \
     curl -l https://github.com/shaman007/CAnitiser/blob/af98f7149963db3c8f8af4fa80eb25f27047f999/ca-analyse.py -o /app/ca-analyse.py && \
     curl -l https://github.com/shaman007/CAnitiser/blob/af98f7149963db3c8f8af4fa80eb25f27047f999/ca-nitiser.py -o ca-nitiser.py && \
