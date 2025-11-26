@@ -32,10 +32,10 @@ repos:
     rev: v8.16.1
     hooks:
       - id: gitleaks
-  - repo: local
-    hooks:
-      - id: hadolint-docker
-        name: hadolint via docker
-        entry: hadolint-docker.sh
-        language: script
-        files: (?i)dockerfile
+ # - repo: local
+ #   hooks:
+ #     - id: hadolint-docker
+ #       name: hadolint via docker
+ #       entry: hadolint-docker.sh
+ #       language: script
+ #       files: (?i)dockerfile

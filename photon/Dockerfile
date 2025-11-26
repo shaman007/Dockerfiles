@@ -8,7 +8,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get upgrade -y && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 WORKDIR /photon
-ADD https://github.com/komoot/photon/releases/download/0.7.4/photon-0.7.4.jar /photon/photon.jar
+RUN wget --progress=dot:giga https://github.com/komoot/photon/releases/download/0.7.4/photon-0.7.4.jar -O /photon/photon.jar
 COPY entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 VOLUME /photon/photon_data
