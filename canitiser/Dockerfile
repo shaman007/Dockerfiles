@@ -20,7 +20,6 @@ RUN set -eux; \
     curl -l https://github.com/shaman007/CAnitiser/blob/af98f7149963db3c8f8af4fa80eb25f27047f999/ca-nitiser.py -o ca-nitiser.py && \
     curl -l https://github.com/shaman007/CAnitiser/blob/af98f7149963db3c8f8af4fa80eb25f27047f999/ca-report-html.py -o /app/ca-report-html.py && \
     curl -l https://github.com/shaman007/CAnitiser/blob/af98f7149963db3c8f8af4fa80eb25f27047f999/ca-report-html.py -o /app/ca-report-html.py
-COPY ca-nitiser.py ca-analyse.py ca-report-html.py push-report.py ./
 RUN useradd -r -u 10001 -g users scanner && \
     chown -R scanner:users /app
 USER scanner
