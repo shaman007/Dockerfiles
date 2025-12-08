@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+php-fpm8.4 -c /etc/php/8.4/fpm/php.ini -F
+while true; do sleep 1; done;

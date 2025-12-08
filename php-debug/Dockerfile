@@ -1,0 +1,55 @@
+FROM docker.io/library/debian:stable-slim
+#hadolint ignore=DL3008
+RUN DEBIAN_FRONTEND=noninteractive apt-get update &&\
+    DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install -- \
+                   vim \
+                   curl \
+                   wget \
+                   php-fpm \
+                   default-dbus-session-bus \
+                   gpm \
+                   file \
+                   php-pear \
+                   libfido2-1 \
+                   libqrencode4 \
+                   libtss2-esys-3.0.2-0 \
+                   libtss2-mu-4.0.1-0t64 \
+                   libtss2-rc0 \
+                   php-opcache \
+                   php-redis \
+                   php-mysql \
+                   php-apcu \
+                   php-imagick \
+                   php-zip \
+                   php-mbstring \
+                   php-gd \
+                   php-curl \
+                   php-intl \
+                   php-gmp \
+                   php-bcmath \
+                   libfftw3-bin \
+                   libfftw3-dev \
+                   libgd-tools \
+                   low-memory-monitor \
+                   liblcms2-utils \
+                   libmagickcore-7.q16-10-extra \
+                   poppler-utils \
+                   php-cli \
+                   php-common \
+                   ffmpeg \
+                   sudo \
+                   openssl \
+                   ca-certificates \
+                   dumb-init \
+                   libimage-exiftool-perl && \
+                   DEBIAN_FRONTEND=noninteractive apt-get remove -y git &&\
+                   DEBIAN_FRONTEND=noninteractive apt-get autoremove -y &&\
+                   DEBIAN_FRONTEND=noninteractive apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
+                   ln -sf /proc/1/fd/1 /var/log/php8.4-fpm.log &&\
+                   usermod -aG clock www-data
+COPY run /etc/
+RUN  mkdir -p /etc/php/8.4/fpm/pool.d/
+COPY php.ini /etc/php/8.4/fpm/pool.d/
+RUN  mkdir -p /etc/php/8.4/mods-available
+COPY apcu.ini /etc/php/8.4/mods-available
+ENTRYPOINT ["dumb-init", "--", "/etc/run"]
