@@ -6,7 +6,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update &&\
     curl https://downloads.plex.tv/plex-keys/PlexSign.key | gpg --dearmor -o /etc/apt/keyrings/plex.gpg && \
     echo "deb [signed-by=/etc/apt/keyrings/plex.gpg] https://downloads.plex.tv/repo/deb public main" > /etc/apt/sources.list.d/plexmediaserver.list &&\
     DEBIAN_FRONTEND=noninteractive apt-get update &&\
-    DEBIAN_FRONTEND=noninteractive apt-get install plexmediaserver -y --no-install-recommends &&\
+    DEBIAN_FRONTEND=noninteractive apt-get install plexmediaserver -y --no-install-recommends --allow-unauthenticated &&\
     DEBIAN_FRONTEND=noninteractive apt-get autoremove -y && apt-get clean &&\
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 COPY run /etc/
