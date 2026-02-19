@@ -16,8 +16,8 @@ fi
 # Start photon if elastic index exists
 if [ -d "/photon/photon_data/elasticsearch" ]; then
     echo "Start photon"
-    java -jar photon.jar $@
+    exec java -jar photon.jar "$@"
 else
     echo "Could not start photon, the search index could not be found"
+    exit 1
 fi
-while true; do sleep 1; done;
