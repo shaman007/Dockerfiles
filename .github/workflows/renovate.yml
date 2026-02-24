@@ -18,11 +18,18 @@ jobs:
   renovate:
     runs-on: ubuntu-latest
     env:
-      RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN || github.token }}
+      RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
       RENOVATE_REPOSITORIES: ${{ github.repository }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Ensure Renovate token exists
+        if: ${{ env.RENOVATE_TOKEN == '' }}
+        run: |
+          echo "Missing RENOVATE_TOKEN secret."
+          echo "Create a token with repository write access and store it as RENOVATE_TOKEN."
+          exit 1
 
       - name: Self-host Renovate
         uses: renovatebot/github-action@v43.0.19
