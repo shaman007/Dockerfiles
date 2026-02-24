@@ -6,7 +6,9 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
+  issues: write
 
 concurrency:
   group: renovate
@@ -15,6 +17,8 @@ concurrency:
 jobs:
   renovate:
     runs-on: ubuntu-latest
+    env:
+      RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN || github.token }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -22,4 +26,4 @@ jobs:
       - name: Self-host Renovate
         uses: renovatebot/github-action@v43.0.19
         with:
-          token: ${{ secrets.RENOVATE_TOKEN }}
+          token: ${{ env.RENOVATE_TOKEN }}
