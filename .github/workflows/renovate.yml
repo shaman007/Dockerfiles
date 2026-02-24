@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN || github.token }}
+      RENOVATE_REPOSITORIES: ${{ github.repository }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
