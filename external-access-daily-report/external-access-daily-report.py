@@ -1,0 +1,1187 @@
+#!/usr/bin/env python3
+import html
+import ipaddress
+import json
+import os
+import re
+import smtplib
+import ssl
+import sys
+import textwrap
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from collections import Counter, defaultdict
+from datetime import datetime, timedelta
+from email.message import EmailMessage
+from pathlib import Path
+from urllib.parse import unquote, urlparse
+from zoneinfo import ZoneInfo
+SERVICE_ACCOUNT_DIR = Path("/var/run/secrets/kubernetes.io/serviceaccount")
+SERVICE_ACCOUNT_TOKEN = SERVICE_ACCOUNT_DIR / "token"
+SERVICE_ACCOUNT_CA = SERVICE_ACCOUNT_DIR / "ca.crt"
+TRAEFIK_LOG_RE = re.compile(
+    r'^(?P<client_ip>\S+) - (?P<remote_user>\S+) '
+    r'\[(?P<time_local>[^\]]+)\] '
+    r'"(?P<method>[A-Z]+) (?P<path>\S+) (?P<protocol>[^"]+)" '
+    r'(?P<status>\d{3}) (?P<body_bytes_sent>\d+) '
+    r'"(?P<referer>[^"]*)" "(?P<user_agent>[^"]*)" '
+    r'(?P<request_id>\S+) "(?P<router>[^"]*)" '
+    r'"(?P<backend_url>[^"]*)" (?P<duration>\S+)$'
+)
+POSTFIX_CONNECT_RE = re.compile(
+    r"postfix/smtpd\[\d+\]: connect from [^\[]+\[(?P<ip>[^\]]+)\]"
+)
+POSTFIX_REJECT_RE = re.compile(
+    r"postfix/smtpd\[\d+\]: NOQUEUE: reject: .* from [^\[]+\[(?P<ip>[^\]]+)\]"
+)
+POSTFIX_AUTH_FAIL_RE = re.compile(
+    r"(?:authentication failed|SASL (?:LOGIN|PLAIN) authentication failed)",
+    re.IGNORECASE,
+)
+POSTFIX_STATUS_RE = re.compile(r"status=(?P<status>sent|deferred|bounced)")
+DOVECOT_SUCCESS_RE = re.compile(
+    r"(?:imap|pop3|managesieve)-login: Login: user=<(?P<user>[^>]*)>.*rip=(?P<ip>[^, ]+)"
+)
+DOVECOT_FAILURE_RE = re.compile(
+    r"(?:Aborted login|Disconnected \(auth failed.*\)|auth failed).*rip=(?P<ip>[^, ]+)",
+    re.IGNORECASE,
+)
+HARBOR_PULL_RE = re.compile(
+    r"^/v2/(?P<repo>.+?)/(?P<kind>manifests|blobs)/(?P<ref>[^/?]+)"
+)
+def env(name, default=None, required=False):
+    value = os.environ.get(name, default)
+    if required and not value:
+        raise SystemExit(f"Missing required environment variable: {name}")
+    return value
+def load_cluster_credentials():
+    token = SERVICE_ACCOUNT_TOKEN.read_text(encoding="utf-8").strip()
+    ssl_context = ssl.create_default_context(cafile=str(SERVICE_ACCOUNT_CA))
+    return token, ssl_context
+def env_int(name, default):
+    value = env(name, str(default))
+    try:
+        return int(value)
+    except ValueError as exc:
+        raise SystemExit(f"Environment variable {name} must be an integer, got: {value}") from exc
+def should_retry_http_error(exc):
+    if isinstance(exc, TimeoutError):
+        return True
+    if isinstance(exc, urllib.error.HTTPError):
+        return exc.code in {408, 429, 500, 502, 503, 504}
+    if isinstance(exc, urllib.error.URLError):
+        reason = exc.reason
+        if isinstance(reason, TimeoutError):
+            return True
+        if isinstance(reason, OSError):
+            return True
+    return False
+def http_json(url, *, headers=None, ssl_context=None, method="GET", payload=None):
+    request_headers = dict(headers or {})
+    data = None
+    if payload is not None:
+        data = json.dumps(payload).encode("utf-8")
+        request_headers["Content-Type"] = "application/json"
+    request = urllib.request.Request(
+        url,
+        headers=request_headers,
+        data=data,
+        method=method,
+    )
+    timeout_seconds = env_int("HTTP_TIMEOUT_SECONDS", 180)
+    max_attempts = max(1, env_int("HTTP_MAX_ATTEMPTS", 3))
+    retry_delay_seconds = max(0, env_int("HTTP_RETRY_DELAY_SECONDS", 5))
+    for attempt in range(1, max_attempts + 1):
+        try:
+            with urllib.request.urlopen(
+                request,
+                context=ssl_context,
+                timeout=timeout_seconds,
+            ) as response:
+                return json.load(response)
+        except (TimeoutError, urllib.error.HTTPError, urllib.error.URLError) as exc:
+            if attempt >= max_attempts or not should_retry_http_error(exc):
+                raise
+            sleep_seconds = retry_delay_seconds * attempt
+            print(
+                f"http_json retrying attempt {attempt + 1}/{max_attempts} after "
+                f"{sleep_seconds}s for {url}: {exc}",
+                file=sys.stderr,
+            )
+            time.sleep(sleep_seconds)
+def kube_json(base_url, path, token, ssl_context, method="GET", payload=None):
+    url = base_url.rstrip("/") + path
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",
+    }
+    return http_json(
+        url,
+        headers=headers,
+        ssl_context=ssl_context,
+        method=method,
+        payload=payload,
+    )
+def loki_query_iter(base_url, query, start_ns, end_ns, *, limit=5000):
+    next_start_ns = start_ns
+    while next_start_ns < end_ns:
+        params = urllib.parse.urlencode(
+            {
+                "query": query,
+                "start": str(next_start_ns),
+                "end": str(end_ns),
+                "limit": str(limit),
+                "direction": "forward",
+            }
+        )
+        url = f"{base_url.rstrip('/')}/query_range?{params}"
+        payload = http_json(url)
+        streams = payload.get("data", {}).get("result", [])
+        batch = []
+        for stream in streams:
+            labels = stream.get("stream", {})
+            for timestamp_ns, line in stream.get("values", []):
+                batch.append((int(timestamp_ns), line, labels))
+        if not batch:
+            break
+        batch.sort(key=lambda item: (item[0], item[1]))
+        for item in batch:
+            yield item
+        last_timestamp_ns = batch[-1][0]
+        if len(batch) < limit or last_timestamp_ns >= end_ns:
+            break
+        next_start_ns = last_timestamp_ns + 1
+def get_time_window(time_zone_name):
+    tz = ZoneInfo(time_zone_name)
+    now = datetime.now(tz)
+    end_local = datetime(now.year, now.month, now.day, tzinfo=tz)
+    start_local = end_local - timedelta(days=1)
+    return tz, start_local, end_local
+def is_public_host(host, suffixes):
+    host = host.lower().rstrip(".")
+    return any(host == suffix or host.endswith("." + suffix) for suffix in suffixes)
+def fetch_public_hosts(base_url, token, ssl_context, suffixes):
+    payload = kube_json(base_url, "/apis/networking.k8s.io/v1/ingresses", token, ssl_context)
+    hosts = set()
+    for item in payload.get("items", []):
+        for rule in item.get("spec", {}).get("rules", []):
+            host = (rule.get("host") or "").strip().lower()
+            if host and is_public_host(host, suffixes):
+                hosts.add(host)
+    return sorted(hosts)
+def host_fragments(hosts):
+    items = []
+    for host in hosts:
+        fragment = host.replace(".", "-")
+        items.append((fragment, host))
+    return sorted(items, key=lambda item: len(item[0]), reverse=True)
+def host_from_router(router_name, fragments):
+    router_name = router_name.lower()
+    for fragment, host in fragments:
+        if fragment in router_name:
+            return host
+    return ""
+def strip_query(path):
+    parsed = urlparse(path)
+    return unquote(parsed.path or "/") or "/"
+def first_non_empty(values):
+    for value in values:
+        if value is None:
+            continue
+        value = str(value).strip()
+        if value and value not in {"-", "unknown", "null"}:
+            return value
+    return ""
+def normalize_ip(value):
+    candidate = value.strip().split("%", 1)[0]
+    if candidate.startswith("[") and "]" in candidate:
+        candidate = candidate[1 : candidate.index("]")]
+    elif candidate.count(":") == 1 and "." in candidate:
+        candidate = candidate.rsplit(":", 1)[0]
+    try:
+        return str(ipaddress.ip_address(candidate))
+    except ValueError:
+        return ""
+def normalize_country_code(value):
+    country = first_non_empty([value]).upper()
+    if country in {"", "-", "XX", "T1"}:
+        return ""
+    return country
+def extract_traefik_request_header(entry, header_name):
+    target = header_name.lower()
+    request_headers = entry.get("RequestHeaders")
+    if isinstance(request_headers, dict):
+        for key, value in request_headers.items():
+            if str(key).lower() == target:
+                return first_non_empty([value])
+    for key, value in entry.items():
+        if not isinstance(key, str):
+            continue
+        if not key.lower().startswith("request_"):
+            continue
+        if key[8:].lower() == target:
+            return first_non_empty([value])
+    return ""
+def parse_traefik_line(line):
+    line = line.strip()
+    if not line:
+        return None
+    if line.startswith("{"):
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            payload = None
+        if isinstance(payload, dict):
+            request_host = first_non_empty(
+                [
+                    payload.get("RequestHost", ""),
+                    extract_traefik_request_header(payload, "Host"),
+                ]
+            ).lower()
+            path = strip_query(
+                first_non_empty(
+                    [
+                        payload.get("RequestPath", ""),
+                        payload.get("RequestURI", ""),
+                        payload.get("path", ""),
+                        "/",
+                    ]
+                )
+            )
+            return {
+                "client_ip": first_non_empty(
+                    [
+                        payload.get("ClientHost", ""),
+                        payload.get("ClientAddr", ""),
+                    ]
+                ),
+                "path": path,
+                "status": str(
+                    first_non_empty(
+                        [
+                            payload.get("DownstreamStatus", ""),
+                            payload.get("OriginStatus", ""),
+                            payload.get("status", ""),
+                        ]
+                    )
+                    or "0"
+                ),
+                "router": first_non_empty(
+                    [
+                        payload.get("RouterName", ""),
+                        payload.get("router", ""),
+                    ]
+                ),
+                "method": first_non_empty(
+                    [
+                        payload.get("RequestMethod", ""),
+                        payload.get("request_method", ""),
+                        payload.get("Method", ""),
+                        payload.get("method", ""),
+                    ]
+                ).upper(),
+                "user_agent": first_non_empty(
+                    [
+                        payload.get("RequestUserAgent", ""),
+                        payload.get("UserAgent", ""),
+                        payload.get("user_agent", ""),
+                        extract_traefik_request_header(payload, "User-Agent"),
+                    ]
+                ),
+                "request_host": request_host,
+                "country_code": normalize_country_code(
+                    first_non_empty(
+                        [
+                            extract_traefik_request_header(payload, "GeoIP-Country-Code"),
+                            extract_traefik_request_header(payload, "CF-IPCountry"),
+                        ]
+                    )
+                ),
+            }
+    match = TRAEFIK_LOG_RE.match(line)
+    if not match:
+        return None
+    payload = match.groupdict()
+    payload["request_host"] = ""
+    payload["country_code"] = ""
+    return payload
+def is_external_ip(value):
+    normalized = normalize_ip(value)
+    if not normalized:
+        return False
+    candidate = ipaddress.ip_address(normalized)
+    return not any(
+        [
+            candidate.is_private,
+            candidate.is_loopback,
+            candidate.is_link_local,
+            candidate.is_multicast,
+            candidate.is_reserved,
+            candidate.is_unspecified,
+        ]
+    )
+def format_counter(counter, limit=5, empty_text="  - none"):
+    if not counter:
+        return [empty_text]
+    return [f"  - {name}: {count}" for name, count in counter.most_common(limit)]
+def summarize_top_paths(counter, limit=3):
+    if not counter:
+        return "none"
+    return ", ".join(f"{path} ({count})" for path, count in counter.most_common(limit))
+def summarize_top_ips(counter, limit=5):
+    if not counter:
+        return "none"
+    return ", ".join(f"{ip} ({count})" for ip, count in counter.most_common(limit))
+def summarize_top_counts(counter, limit=5):
+    if not counter:
+        return "none"
+    return ", ".join(f"{name} ({count})" for name, count in counter.most_common(limit))
+def wrap_table_cell(value, width):
+    text = str(value or "")
+    wrapped_lines = []
+    for chunk in text.splitlines() or [""]:
+        lines = textwrap.wrap(
+            chunk,
+            width=width,
+            break_long_words=False,
+            break_on_hyphens=False,
+        )
+        wrapped_lines.extend(lines or [""])
+    return wrapped_lines or [""]
+def render_text_table(headers, rows, max_widths=None):
+    if not rows:
+        return ["(none)"]
+    string_rows = [[str(cell) for cell in row] for row in rows]
+    widths = []
+    for index, header in enumerate(headers):
+        width = max([len(header)] + [len(row[index]) for row in string_rows])
+        if max_widths and index < len(max_widths):
+            width = min(width, max_widths[index])
+        widths.append(width)
+    border = "+-" + "-+-".join("-" * width for width in widths) + "-+"
+    lines = [border]
+    lines.append("| " + " | ".join(header.ljust(widths[index]) for index, header in enumerate(headers)) + " |")
+    lines.append(border)
+    for row in string_rows:
+        wrapped_cells = [wrap_table_cell(row[index], widths[index]) for index in range(len(headers))]
+        row_height = max(len(cell_lines) for cell_lines in wrapped_cells)
+        for line_index in range(row_height):
+            rendered_cells = []
+            for cell_index, cell_lines in enumerate(wrapped_cells):
+                value = cell_lines[line_index] if line_index < len(cell_lines) else ""
+                rendered_cells.append(value.ljust(widths[cell_index]))
+            lines.append("| " + " | ".join(rendered_cells) + " |")
+        lines.append(border)
+    return lines
+def render_html_counter_list(counter, limit, *, empty_text="none"):
+    if not counter:
+        return f'<span style="color:#6b7280;">{html.escape(empty_text)}</span>'
+    items = []
+    for name, count in counter.most_common(limit):
+        items.append(
+            "<li style=\"margin:0 0 4px 18px;\">"
+            f"<span style=\"font-family:ui-monospace, SFMono-Regular, Menlo, monospace;\">{html.escape(str(name))}</span> "
+            f"<strong>{count}</strong>"
+            "</li>"
+        )
+    return "<ol style=\"margin:0;padding:0;\">" + "".join(items) + "</ol>"
+def render_html_stat_row(label, value):
+    return (
+        "<tr>"
+        f"<td style=\"padding:8px 10px;border-bottom:1px solid #e5e7eb;color:#374151;\">{html.escape(label)}</td>"
+        f"<td style=\"padding:8px 10px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;color:#111827;\">{html.escape(str(value))}</td>"
+        "</tr>"
+    )
+def render_html_report(
+    *,
+    start_local,
+    end_local,
+    hosts,
+    ingress_stats,
+    harbor_host,
+    harbor_stats,
+    postfix_stats,
+    dovecot_stats,
+):
+    ingress_rows = []
+    for host in hosts:
+        current = ingress_stats.get(
+            host,
+            {
+                "requests": 0,
+                "external_requests": 0,
+                "status_counts": Counter(),
+                "path_counts": Counter(),
+                "country_counts": Counter(),
+                "external_ip_counts": Counter(),
+                "external_ips": set(),
+            },
+        )
+        errors_4xx = sum(
+            count for status, count in current["status_counts"].items() if status.startswith("4")
+        )
+        errors_5xx = sum(
+            count for status, count in current["status_counts"].items() if status.startswith("5")
+        )
+        ingress_rows.append(
+            "<tr>"
+            f"<td style=\"padding:12px 10px;border-bottom:1px solid #e5e7eb;vertical-align:top;font-weight:600;color:#111827;\">{html.escape(host)}</td>"
+            f"<td style=\"padding:12px 10px;border-bottom:1px solid #e5e7eb;vertical-align:top;text-align:right;\">{current['requests']}</td>"
+            f"<td style=\"padding:12px 10px;border-bottom:1px solid #e5e7eb;vertical-align:top;text-align:right;\">{current['external_requests']}</td>"
+            f"<td style=\"padding:12px 10px;border-bottom:1px solid #e5e7eb;vertical-align:top;text-align:right;\">{len(current['external_ips'])}</td>"
+            f"<td style=\"padding:12px 10px;border-bottom:1px solid #e5e7eb;vertical-align:top;text-align:right;\">{errors_4xx}</td>"
+            f"<td style=\"padding:12px 10px;border-bottom:1px solid #e5e7eb;vertical-align:top;text-align:right;\">{errors_5xx}</td>"
+            f"<td style=\"padding:12px 10px;border-bottom:1px solid #e5e7eb;vertical-align:top;min-width:220px;\">{render_html_counter_list(current['country_counts'], 10)}</td>"
+            f"<td style=\"padding:12px 10px;border-bottom:1px solid #e5e7eb;vertical-align:top;min-width:280px;\">{render_html_counter_list(current['external_ip_counts'], 20)}</td>"
+            f"<td style=\"padding:12px 10px;border-bottom:1px solid #e5e7eb;vertical-align:top;min-width:280px;\">{render_html_counter_list(current['path_counts'], 5)}</td>"
+            "</tr>"
+        )
+    harbor_status_rows = "".join(
+        render_html_stat_row(status, count) for status, count in harbor_stats["status_counts"].most_common(10)
+    ) or render_html_stat_row("none", 0)
+    postfix_status_rows = "".join(
+        render_html_stat_row(status, count)
+        for status, count in postfix_stats["delivery_status"].most_common(10)
+    ) or render_html_stat_row("none", 0)
+    return f"""\
+<html>
+  <body style="margin:0;padding:0;background:#f3f4f6;color:#111827;font:14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+    <div style="max-width:1680px;margin:0 auto;padding:24px;">
+      <div style="background:linear-gradient(135deg,#0f172a,#1d4ed8);color:#ffffff;border-radius:18px;padding:24px 28px;box-shadow:0 14px 40px rgba(15,23,42,0.18);">
+        <div style="font-size:13px;letter-spacing:0.08em;text-transform:uppercase;opacity:0.82;">Home k3s</div>
+        <h1 style="margin:8px 0 10px;font-size:30px;line-height:1.15;">External Access Daily Report</h1>
+        <div style="font-size:15px;opacity:0.92;">
+          Window: {html.escape(start_local.strftime('%Y-%m-%d %H:%M:%S %Z'))} to {html.escape(end_local.strftime('%Y-%m-%d %H:%M:%S %Z'))}
+        </div>
+        <div style="margin-top:10px;font-size:13px;opacity:0.82;">
+          Public hosts discovered: {html.escape(', '.join(hosts))}
+        </div>
+      </div>
+      <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;margin-top:20px;box-shadow:0 8px 24px rgba(15,23,42,0.06);overflow:hidden;">
+        <div style="padding:18px 22px;border-bottom:1px solid #e5e7eb;background:#f8fafc;">
+          <h2 style="margin:0;font-size:20px;">Public HTTP Ingress Summary</h2>
+          <div style="margin-top:6px;color:#6b7280;">Requests, errors, top 10 countries, top 20 external IPs, and top 5 paths per host.</div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;min-width:1500px;">
+            <thead>
+              <tr style="background:#f8fafc;color:#374151;text-align:left;">
+                <th style="padding:12px 10px;border-bottom:1px solid #e5e7eb;">Host</th>
+                <th style="padding:12px 10px;border-bottom:1px solid #e5e7eb;text-align:right;">Requests</th>
+                <th style="padding:12px 10px;border-bottom:1px solid #e5e7eb;text-align:right;">External</th>
+                <th style="padding:12px 10px;border-bottom:1px solid #e5e7eb;text-align:right;">Unique IPs</th>
+                <th style="padding:12px 10px;border-bottom:1px solid #e5e7eb;text-align:right;">4xx</th>
+                <th style="padding:12px 10px;border-bottom:1px solid #e5e7eb;text-align:right;">5xx</th>
+                <th style="padding:12px 10px;border-bottom:1px solid #e5e7eb;">Top 10 Countries</th>
+                <th style="padding:12px 10px;border-bottom:1px solid #e5e7eb;">Top 20 External IPs</th>
+                <th style="padding:12px 10px;border-bottom:1px solid #e5e7eb;">Top 5 Paths</th>
+              </tr>
+            </thead>
+            <tbody>
+              {''.join(ingress_rows)}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:20px;">
+        <div style="flex:1 1 520px;background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;box-shadow:0 8px 24px rgba(15,23,42,0.06);overflow:hidden;">
+          <div style="padding:18px 22px;border-bottom:1px solid #e5e7eb;background:#f8fafc;">
+            <h2 style="margin:0;font-size:20px;">Harbor Pull Activity</h2>
+            <div style="margin-top:6px;color:#6b7280;">{html.escape(harbor_host)}</div>
+          </div>
+          <div style="padding:20px 22px;">
+            <table style="width:100%;border-collapse:collapse;">
+              {render_html_stat_row('External requests', harbor_stats['external_requests'])}
+              {render_html_stat_row('Unique external IPs', len(harbor_stats['external_ips']))}
+              {render_html_stat_row('Manifest fetches', harbor_stats['manifest_requests'])}
+              {render_html_stat_row('Blob fetches', harbor_stats['blob_requests'])}
+            </table>
+            <div style="margin-top:16px;">
+              <div style="font-weight:700;margin-bottom:8px;">Top external IPs</div>
+              {render_html_counter_list(harbor_stats['external_ip_counts'], 20)}
+            </div>
+            <div style="margin-top:16px;">
+              <div style="font-weight:700;margin-bottom:8px;">Top pulled repositories</div>
+              {render_html_counter_list(harbor_stats['repo_counts'], 10)}
+            </div>
+            <div style="margin-top:16px;">
+              <div style="font-weight:700;margin-bottom:8px;">Status totals</div>
+              <table style="width:100%;border-collapse:collapse;">{harbor_status_rows}</table>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1 1 420px;background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;box-shadow:0 8px 24px rgba(15,23,42,0.06);overflow:hidden;">
+          <div style="padding:18px 22px;border-bottom:1px solid #e5e7eb;background:#f8fafc;">
+            <h2 style="margin:0;font-size:20px;">Mail Access Summary</h2>
+          </div>
+          <div style="padding:20px 22px;">
+            <table style="width:100%;border-collapse:collapse;">
+              {render_html_stat_row('Postfix connections', postfix_stats['connections'])}
+              {render_html_stat_row('Postfix external connections', postfix_stats['external_connections'])}
+              {render_html_stat_row('Postfix auth failures', postfix_stats['auth_failures'])}
+              {render_html_stat_row('Postfix rejects', postfix_stats['rejects'])}
+              {render_html_stat_row('Dovecot successful logins', dovecot_stats['successful_logins'])}
+              {render_html_stat_row('Dovecot failed logins', dovecot_stats['failed_logins'])}
+            </table>
+            <div style="margin-top:16px;">
+              <div style="font-weight:700;margin-bottom:8px;">Postfix top external IPs</div>
+              {render_html_counter_list(postfix_stats['external_ip_counts'], 20)}
+            </div>
+            <div style="margin-top:16px;">
+              <div style="font-weight:700;margin-bottom:8px;">Postfix delivery statuses</div>
+              <table style="width:100%;border-collapse:collapse;">{postfix_status_rows}</table>
+            </div>
+            <div style="margin-top:16px;">
+              <div style="font-weight:700;margin-bottom:8px;">Dovecot top users</div>
+              {render_html_counter_list(dovecot_stats['users'], 10)}
+            </div>
+            <div style="margin-top:16px;">
+              <div style="font-weight:700;margin-bottom:8px;">Dovecot top external IPs</div>
+              {render_html_counter_list(dovecot_stats['external_ip_counts'], 20)}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+"""
+def prometheus_escape(value):
+    return (
+        str(value)
+        .replace("\\", "\\\\")
+        .replace("\n", "\\n")
+        .replace('"', '\\"')
+    )
+def format_prometheus_labels(labels):
+    if not labels:
+        return ""
+    parts = [f'{name}="{prometheus_escape(value)}"' for name, value in sorted(labels.items())]
+    return "{" + ",".join(parts) + "}"
+def append_gauge(lines, name, help_text, samples):
+    lines.append(f"# HELP {name} {help_text}")
+    lines.append(f"# TYPE {name} gauge")
+    for labels, value in samples:
+        lines.append(f"{name}{format_prometheus_labels(labels)} {value}")
+    lines.append("")
+def collect_ingress_stats(loki_base_url, start_ns, end_ns, hosts, fragments, harbor_host):
+    host_set = set(hosts)
+    stats = defaultdict(
+        lambda: {
+            "requests": 0,
+            "external_requests": 0,
+            "status_counts": Counter(),
+            "path_counts": Counter(),
+            "country_counts": Counter(),
+            "external_ip_counts": Counter(),
+            "external_ips": set(),
+        }
+    )
+    harbor_stats = {
+        "external_requests": 0,
+        "external_ips": set(),
+        "external_ip_counts": Counter(),
+        "manifest_requests": 0,
+        "blob_requests": 0,
+        "repo_counts": Counter(),
+        "status_counts": Counter(),
+        "pull_user_agents": Counter(),
+    }
+    query = '{namespace="traefik", app="traefik", container="traefik"}'
+    for _, line, _ in loki_query_iter(loki_base_url, query, start_ns, end_ns):
+        entry = parse_traefik_line(line)
+        if not entry:
+            continue
+        host = (entry.get("request_host") or "").strip().lower()
+        if host not in host_set:
+            host = host_from_router(entry.get("router", ""), fragments)
+        if not host:
+            continue
+        path = strip_query(entry.get("path", "/"))
+        status = str(entry.get("status", "0"))
+        client_ip = normalize_ip(entry.get("client_ip", ""))
+        external = is_external_ip(client_ip)
+        current = stats[host]
+        current["requests"] += 1
+        current["status_counts"][status] += 1
+        current["path_counts"][path] += 1
+        if external:
+            current["external_requests"] += 1
+            current["external_ip_counts"][client_ip] += 1
+            current["external_ips"].add(client_ip)
+            country_code = normalize_country_code(entry.get("country_code", ""))
+            if country_code:
+                current["country_counts"][country_code] += 1
+        if host != harbor_host:
+            continue
+        if external:
+            harbor_stats["external_requests"] += 1
+            harbor_stats["external_ips"].add(client_ip)
+            harbor_stats["external_ip_counts"][client_ip] += 1
+            harbor_stats["status_counts"][status] += 1
+        # Harbor pulls may arrive through a private upstream hop, so keep the
+        # pull accounting independent from the public-IP classification.
+        if (entry.get("method") or "").upper() not in {"GET", "HEAD"}:
+            continue
+        if not status.startswith(("2", "3")):
+            continue
+        registry_match = HARBOR_PULL_RE.match(path)
+        if not registry_match:
+            continue
+        repo = registry_match.group("repo")
+        kind = registry_match.group("kind")
+        harbor_stats["repo_counts"][repo] += 1
+        user_agent = (entry.get("user_agent") or "").strip()
+        if user_agent and user_agent != "-":
+            harbor_stats["pull_user_agents"][user_agent] += 1
+        if kind == "manifests":
+            harbor_stats["manifest_requests"] += 1
+        elif kind == "blobs":
+            harbor_stats["blob_requests"] += 1
+    return stats, harbor_stats
+def collect_postfix_stats(loki_base_url, start_ns, end_ns):
+    stats = {
+        "connections": 0,
+        "external_connections": 0,
+        "external_ip_counts": Counter(),
+        "auth_failures": 0,
+        "rejects": 0,
+        "reject_ip_counts": Counter(),
+        "delivery_status": Counter(),
+    }
+    query = '{namespace="mail", app="postfix"}'
+    for _, line, _ in loki_query_iter(loki_base_url, query, start_ns, end_ns):
+        if "the Postfix mail system is running" in line:
+            continue
+        connect_match = POSTFIX_CONNECT_RE.search(line)
+        if connect_match:
+            stats["connections"] += 1
+            client_ip = normalize_ip(connect_match.group("ip"))
+            if is_external_ip(client_ip):
+                stats["external_connections"] += 1
+                stats["external_ip_counts"][client_ip] += 1
+        if POSTFIX_AUTH_FAIL_RE.search(line):
+            stats["auth_failures"] += 1
+        reject_match = POSTFIX_REJECT_RE.search(line)
+        if reject_match:
+            stats["rejects"] += 1
+            client_ip = normalize_ip(reject_match.group("ip"))
+            if client_ip:
+                stats["reject_ip_counts"][client_ip] += 1
+        delivery_match = POSTFIX_STATUS_RE.search(line)
+        if delivery_match:
+            stats["delivery_status"][delivery_match.group("status")] += 1
+    return stats
+def collect_dovecot_stats(loki_base_url, start_ns, end_ns):
+    stats = {
+        "successful_logins": 0,
+        "failed_logins": 0,
+        "users": Counter(),
+        "external_ip_counts": Counter(),
+        "failure_ip_counts": Counter(),
+    }
+    query = '{namespace="mail", app="dovecot"}'
+    for _, line, _ in loki_query_iter(loki_base_url, query, start_ns, end_ns):
+        success_match = DOVECOT_SUCCESS_RE.search(line)
+        if success_match:
+            stats["successful_logins"] += 1
+            username = success_match.group("user").strip() or "unknown"
+            client_ip = normalize_ip(success_match.group("ip"))
+            stats["users"][username] += 1
+            if is_external_ip(client_ip):
+                stats["external_ip_counts"][client_ip] += 1
+            continue
+        failure_match = DOVECOT_FAILURE_RE.search(line)
+        if failure_match:
+            stats["failed_logins"] += 1
+            client_ip = normalize_ip(failure_match.group("ip"))
+            if client_ip:
+                stats["failure_ip_counts"][client_ip] += 1
+    return stats
+def render_metrics(
+    *,
+    report_timestamp,
+    start_local,
+    end_local,
+    hosts,
+    ingress_stats,
+    harbor_host,
+    harbor_stats,
+    postfix_stats,
+    dovecot_stats,
+):
+    lines = []
+    cluster_labels = {"scope": "cluster"}
+    append_gauge(
+        lines,
+        "external_access_analytics_report_timestamp_seconds",
+        "Unix timestamp when the external access analytics report was generated.",
+        [(cluster_labels, report_timestamp)],
+    )
+    append_gauge(
+        lines,
+        "external_access_analytics_window_start_timestamp_seconds",
+        "Unix timestamp for the start of the analyzed external access reporting window.",
+        [(cluster_labels, int(start_local.timestamp()))],
+    )
+    append_gauge(
+        lines,
+        "external_access_analytics_window_end_timestamp_seconds",
+        "Unix timestamp for the end of the analyzed external access reporting window.",
+        [(cluster_labels, int(end_local.timestamp()))],
+    )
+    append_gauge(
+        lines,
+        "external_access_analytics_requests_daily",
+        "Daily total HTTP requests grouped by public host for the most recent completed reporting window.",
+        [
+            ({"host": host}, ingress_stats.get(host, {}).get("requests", 0))
+            for host in hosts
+        ],
+    )
+    append_gauge(
+        lines,
+        "external_access_analytics_external_requests_daily",
+        "Daily externally sourced HTTP requests grouped by public host for the most recent completed reporting window.",
+        [
+            ({"host": host}, ingress_stats.get(host, {}).get("external_requests", 0))
+            for host in hosts
+        ],
+    )
+    append_gauge(
+        lines,
+        "external_access_analytics_unique_external_ips_daily",
+        "Daily unique external client IP count grouped by public host for the most recent completed reporting window.",
+        [
+            ({"host": host}, len(ingress_stats.get(host, {}).get("external_ips", set())))
+            for host in hosts
+        ],
+    )
+    append_gauge(
+        lines,
+        "external_access_analytics_status_daily",
+        "Daily HTTP request totals grouped by public host and status code for the most recent completed reporting window.",
+        [
+            ({"host": host, "status": status}, count)
+            for host in hosts
+            for status, count in sorted(
+                ingress_stats.get(host, {}).get("status_counts", {}).items(),
+                key=lambda item: int(item[0]),
+            )
+        ],
+    )
+    append_gauge(
+        lines,
+        "external_access_analytics_paths_daily",
+        "Daily public-host request totals grouped by request path for the most recent completed reporting window.",
+        [
+            ({"host": host, "path": path}, count)
+            for host in hosts
+            for path, count in ingress_stats.get(host, {}).get("path_counts", Counter()).most_common(20)
+        ],
+    )
+    append_gauge(
+        lines,
+        "external_access_analytics_external_ip_requests_daily",
+        "Daily external request totals grouped by public host and client IP for the most recent completed reporting window.",
+        [
+            ({"host": host, "client_ip": client_ip}, count)
+            for host in hosts
+            for client_ip, count in ingress_stats.get(host, {}).get("external_ip_counts", Counter()).most_common(20)
+        ],
+    )
+    append_gauge(
+        lines,
+        "external_access_analytics_countries_daily",
+        "Daily external request totals grouped by public host and country code for the most recent completed reporting window.",
+        [
+            ({"host": host, "country": country}, count)
+            for host in hosts
+            for country, count in sorted(
+                ingress_stats.get(host, {}).get("country_counts", Counter()).items()
+            )
+        ],
+    )
+    append_gauge(
+        lines,
+        "external_access_analytics_harbor_external_requests_daily",
+        "Daily external Harbor HTTP requests for the most recent completed reporting window.",
+        [({"host": harbor_host}, harbor_stats["external_requests"])],
+    )
+    append_gauge(
+        lines,
+        "external_access_analytics_harbor_manifest_fetches_daily",
+        "Daily Harbor successful manifest fetches for the most recent completed reporting window.",
+        [({"host": harbor_host}, harbor_stats["manifest_requests"])],
+    )
+    append_gauge(
+        lines,
+        "external_access_analytics_harbor_blob_fetches_daily",
+        "Daily Harbor successful blob fetches for the most recent completed reporting window.",
+        [({"host": harbor_host}, harbor_stats["blob_requests"])],
+    )
+    append_gauge(
+        lines,
+        "external_access_analytics_harbor_unique_external_ips_daily",
+        "Daily unique external client IP count for Harbor for the most recent completed reporting window.",
+        [({"host": harbor_host}, len(harbor_stats["external_ips"]))],
+    )
+    append_gauge(
+        lines,
+        "external_access_analytics_harbor_repo_requests_daily",
+        "Daily Harbor successful registry requests grouped by repository for the most recent completed reporting window.",
+        [
+            ({"host": harbor_host, "repo": repo}, count)
+            for repo, count in harbor_stats["repo_counts"].most_common(20)
+        ],
+    )
+    mail_labels = {"service": "postfix"}
+    append_gauge(
+        lines,
+        "external_access_analytics_mail_postfix_connections_daily",
+        "Daily Postfix connection count for the most recent completed reporting window.",
+        [(mail_labels, postfix_stats["connections"])],
+    )
+    append_gauge(
+        lines,
+        "external_access_analytics_mail_postfix_external_connections_daily",
+        "Daily Postfix external connection count for the most recent completed reporting window.",
+        [(mail_labels, postfix_stats["external_connections"])],
+    )
+    append_gauge(
+        lines,
+        "external_access_analytics_mail_postfix_auth_failures_daily",
+        "Daily Postfix authentication failure count for the most recent completed reporting window.",
+        [(mail_labels, postfix_stats["auth_failures"])],
+    )
+    append_gauge(
+        lines,
+        "external_access_analytics_mail_postfix_rejects_daily",
+        "Daily Postfix rejection count for the most recent completed reporting window.",
+        [(mail_labels, postfix_stats["rejects"])],
+    )
+    append_gauge(
+        lines,
+        "external_access_analytics_mail_postfix_delivery_status_daily",
+        "Daily Postfix delivery outcomes grouped by status for the most recent completed reporting window.",
+        [
+            (mail_labels | {"status": status}, count)
+            for status, count in postfix_stats["delivery_status"].most_common()
+        ],
+    )
+    dovecot_labels = {"service": "dovecot"}
+    append_gauge(
+        lines,
+        "external_access_analytics_mail_dovecot_successful_logins_daily",
+        "Daily Dovecot successful login count for the most recent completed reporting window.",
+        [(dovecot_labels, dovecot_stats["successful_logins"])],
+    )
+    append_gauge(
+        lines,
+        "external_access_analytics_mail_dovecot_failed_logins_daily",
+        "Daily Dovecot failed login count for the most recent completed reporting window.",
+        [(dovecot_labels, dovecot_stats["failed_logins"])],
+    )
+    append_gauge(
+        lines,
+        "external_access_analytics_mail_dovecot_user_logins_daily",
+        "Daily Dovecot successful logins grouped by user for the most recent completed reporting window.",
+        [
+            (dovecot_labels | {"user": user}, count)
+            for user, count in dovecot_stats["users"].most_common(10)
+        ],
+    )
+    return "\n".join(lines).strip() + "\n"
+def upsert_configmap(base_url, namespace, name, data, token, ssl_context):
+    object_path = f"/api/v1/namespaces/{namespace}/configmaps/{name}"
+    body = {
+        "apiVersion": "v1",
+        "kind": "ConfigMap",
+        "metadata": {
+            "name": name,
+            "namespace": namespace,
+            "labels": {
+                "app": "external-access-daily-report",
+                "app.kubernetes.io/name": "external-access-daily-report",
+                "app.kubernetes.io/instance": "external-access-daily-report",
+                "app.kubernetes.io/part-of": "monitoring",
+                "app.kubernetes.io/managed-by": "argoCD",
+            },
+        },
+        "data": data,
+    }
+    try:
+        existing = kube_json(base_url, object_path, token, ssl_context)
+        body["metadata"]["resourceVersion"] = existing["metadata"]["resourceVersion"]
+        return kube_json(
+            base_url,
+            object_path,
+            token,
+            ssl_context,
+            method="PUT",
+            payload=body,
+        )
+    except urllib.error.HTTPError as exc:
+        if exc.code != 404:
+            raise
+    return kube_json(
+        base_url,
+        f"/api/v1/namespaces/{namespace}/configmaps",
+        token,
+        ssl_context,
+        method="POST",
+        payload=body,
+    )
+def render_ingress_section(hosts, stats):
+    lines = ["Public HTTP ingress summary", ""]
+    summary_rows = []
+    country_rows = []
+    ip_rows = []
+    path_rows = []
+    for host in hosts:
+        current = stats.get(
+            host,
+            {
+                "requests": 0,
+                "external_requests": 0,
+                "status_counts": Counter(),
+                "path_counts": Counter(),
+                "country_counts": Counter(),
+                "external_ip_counts": Counter(),
+                "external_ips": set(),
+            },
+        )
+        errors_4xx = sum(
+            count for status, count in current["status_counts"].items() if status.startswith("4")
+        )
+        errors_5xx = sum(
+            count for status, count in current["status_counts"].items() if status.startswith("5")
+        )
+        summary_rows.append(
+            [
+                host,
+                current["requests"],
+                current["external_requests"],
+                len(current["external_ips"]),
+                errors_4xx,
+                errors_5xx,
+            ]
+        )
+        country_rows.append(
+            [
+                host,
+                summarize_top_counts(current["country_counts"], limit=10),
+            ]
+        )
+        ip_rows.append(
+            [
+                host,
+                summarize_top_ips(current["external_ip_counts"], limit=20),
+            ]
+        )
+        path_rows.append(
+            [
+                host,
+                summarize_top_counts(current["path_counts"], limit=5),
+            ]
+        )
+    lines.append("Overview")
+    lines.extend(
+        render_text_table(
+            ["Host", "Requests", "External", "Unique IPs", "4xx", "5xx"],
+            summary_rows,
+            max_widths=[32, 10, 10, 10, 6, 6],
+        )
+    )
+    lines.extend(
+        [
+            "",
+            "Top 10 countries by host",
+        ]
+    )
+    lines.extend(render_text_table(["Host", "Countries"], country_rows, max_widths=[32, 110]))
+    lines.extend(
+        [
+            "",
+            "Top 20 external IPs by host",
+        ]
+    )
+    lines.extend(render_text_table(["Host", "External IPs"], ip_rows, max_widths=[32, 120]))
+    lines.extend(
+        [
+            "",
+            "Top 5 paths by host",
+        ]
+    )
+    lines.extend(render_text_table(["Host", "Paths"], path_rows, max_widths=[32, 110]))
+    return lines
+def render_harbor_section(host, stats):
+    lines = [
+        "",
+        f"Harbor pull activity ({host})",
+        "  - Pull activity is approximated from successful Harbor /v2/ manifest and blob fetches.",
+        "  - Pull counts are tracked separately from external-IP classification because some pulls arrive through a private upstream hop.",
+        f"  - External Harbor requests seen: {stats['external_requests']}",
+        f"  - External unique IPs: {len(stats['external_ips'])}",
+        f"  - Manifest fetches: {stats['manifest_requests']}",
+        f"  - Blob fetches: {stats['blob_requests']}",
+        f"  - Top external IPs: {summarize_top_ips(stats['external_ip_counts'])}",
+    ]
+    if stats["repo_counts"]:
+        lines.append("  - Top pulled repositories:")
+        lines.extend(format_counter(stats["repo_counts"], limit=10))
+    else:
+        lines.append("  - Top pulled repositories: none")
+    if stats["status_counts"]:
+        lines.append("  - Status totals:")
+        lines.extend(format_counter(stats["status_counts"], limit=10))
+    else:
+        lines.append("  - Status totals: none")
+    if stats["pull_user_agents"]:
+        lines.append("  - Top pull user agents:")
+        lines.extend(format_counter(stats["pull_user_agents"], limit=5))
+    else:
+        lines.append("  - Top pull user agents: none")
+    return lines
+def render_mail_section(postfix_stats, dovecot_stats):
+    lines = [
+        "",
+        "Mail access summary",
+        f"  - Postfix connections: {postfix_stats['connections']}",
+        f"  - Postfix external connections: {postfix_stats['external_connections']}",
+        f"  - Postfix auth failures: {postfix_stats['auth_failures']}",
+        f"  - Postfix rejects: {postfix_stats['rejects']}",
+        f"  - Postfix top external IPs: {summarize_top_ips(postfix_stats['external_ip_counts'])}",
+    ]
+    if postfix_stats["delivery_status"]:
+        lines.append("  - Postfix delivery statuses:")
+        lines.extend(format_counter(postfix_stats["delivery_status"], limit=10))
+    else:
+        lines.append("  - Postfix delivery statuses: none")
+    lines.extend(
+        [
+            f"  - Dovecot successful logins: {dovecot_stats['successful_logins']}",
+            f"  - Dovecot failed logins: {dovecot_stats['failed_logins']}",
+            f"  - Dovecot top users: {summarize_top_ips(dovecot_stats['users'])}",
+            f"  - Dovecot top external IPs: {summarize_top_ips(dovecot_stats['external_ip_counts'])}",
+        ]
+    )
+    return lines
+def send_email(host, port, mail_from, mail_to, subject, body, html_body):
+    message = EmailMessage()
+    message["From"] = mail_from
+    message["To"] = mail_to
+    message["Subject"] = subject
+    message.set_content(body)
+    message.add_alternative(html_body, subtype="html")
+    with smtplib.SMTP(host=host, port=port, timeout=30) as smtp:
+        smtp.send_message(message)
+def main():
+    time_zone_name = env("REPORT_TIMEZONE", "Europe/Prague")
+    loki_base_url = env(
+        "LOKI_BASE_URL",
+        "http://loki-gateway.loki.svc.cluster.local/loki/api/v1",
+    )
+    kubernetes_api_url = env("KUBERNETES_API_URL", "https://kubernetes.default.svc")
+    public_host_suffixes = [
+        value.strip().lower()
+        for value in env(
+            "PUBLIC_HOST_SUFFIXES",
+            "andreybondarenko.com,shaman007.com",
+        ).split(",")
+        if value.strip()
+    ]
+    harbor_host = env("HARBOR_HOST", "harbor.andreybondarenko.com").strip().lower()
+    smtp_host = env("SMTP_HOST", required=True)
+    smtp_port = int(env("SMTP_PORT", "25"))
+    mail_from = env("MAIL_FROM", required=True)
+    mail_to = env("MAIL_TO", required=True)
+    metrics_configmap_name = env(
+        "METRICS_CONFIGMAP_NAME",
+        "external-access-daily-report-metrics",
+    )
+    token, ssl_context = load_cluster_credentials()
+    _, start_local, end_local = get_time_window(time_zone_name)
+    report_timestamp = int(datetime.now(ZoneInfo("UTC")).timestamp())
+    start_ns = int(start_local.astimezone(ZoneInfo("UTC")).timestamp() * 1_000_000_000)
+    end_ns = int(end_local.astimezone(ZoneInfo("UTC")).timestamp() * 1_000_000_000)
+    hosts = fetch_public_hosts(
+        kubernetes_api_url,
+        token,
+        ssl_context,
+        public_host_suffixes,
+    )
+    if not hosts:
+        raise SystemExit("No public ingress hosts matched the configured suffixes.")
+    fragments = host_fragments(hosts)
+    ingress_stats, harbor_stats = collect_ingress_stats(
+        loki_base_url,
+        start_ns,
+        end_ns,
+        hosts,
+        fragments,
+        harbor_host,
+    )
+    postfix_stats = collect_postfix_stats(loki_base_url, start_ns, end_ns)
+    dovecot_stats = collect_dovecot_stats(loki_base_url, start_ns, end_ns)
+    subject = (
+        "[Home k3s] External access report "
+        f"({start_local.strftime('%Y-%m-%d')})"
+    )
+    lines = [
+        "Home k3s external access daily report",
+        "",
+        f"Window: {start_local.strftime('%Y-%m-%d %H:%M:%S %Z')} "
+        f"to {end_local.strftime('%Y-%m-%d %H:%M:%S %Z')}",
+        f"Public hosts discovered: {', '.join(hosts)}",
+        "",
+    ]
+    lines.extend(render_ingress_section(hosts, ingress_stats))
+    lines.extend(render_harbor_section(harbor_host, harbor_stats))
+    lines.extend(render_mail_section(postfix_stats, dovecot_stats))
+    report = "\n".join(lines) + "\n"
+    html_report = render_html_report(
+        start_local=start_local,
+        end_local=end_local,
+        hosts=hosts,
+        ingress_stats=ingress_stats,
+        harbor_host=harbor_host,
+        harbor_stats=harbor_stats,
+        postfix_stats=postfix_stats,
+        dovecot_stats=dovecot_stats,
+    )
+    metrics = render_metrics(
+        report_timestamp=report_timestamp,
+        start_local=start_local,
+        end_local=end_local,
+        hosts=hosts,
+        ingress_stats=ingress_stats,
+        harbor_host=harbor_host,
+        harbor_stats=harbor_stats,
+        postfix_stats=postfix_stats,
+        dovecot_stats=dovecot_stats,
+    )
+    upsert_configmap(
+        kubernetes_api_url,
+        "monitoring",
+        metrics_configmap_name,
+        {
+            "metrics.prom": metrics,
+            "report.txt": report,
+        },
+        token,
+        ssl_context,
+    )
+    send_email(smtp_host, smtp_port, mail_from, mail_to, subject, report, html_report)
+    print(report)
+if __name__ == "__main__":
+    try:
+        main()
+    except urllib.error.HTTPError as exc:
+        print(f"external-access-daily-report failed: {exc.code} {exc.reason}", file=sys.stderr)
+        raise
+    except Exception as exc:
+        print(f"external-access-daily-report failed: {exc}", file=sys.stderr)
+        raise
