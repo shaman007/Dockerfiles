@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-PATH=/root/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export PATH="/snap/bin:$PATH"
 
 # Pull latest code
 git pull
@@ -24,6 +24,8 @@ for app in "${apps[@]}"; do
   cd "$app"
 
   docker buildx build --platform linux/amd64,linux/arm64 \
+    --provenance=true \
+    --sbom = true \
     -t "$registry/library/$app:latest" \
     -t "$registry/library/$app:$timestamp" \
     --push .
