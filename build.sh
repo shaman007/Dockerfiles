@@ -12,6 +12,7 @@ timestamp=$(date +"%Y-%m-%d-%H%M")
 # Define variables
 registry="harbor.andreybondarenko.com"
 apps=()
+docker login $registry
 
 # Collect only non-hidden directories
 for dir in */; do
@@ -25,7 +26,7 @@ for app in "${apps[@]}"; do
 
   docker buildx build --platform linux/amd64,linux/arm64 \
     --provenance=true \
-    --sbom = true \
+    --sbom=true \
     -t "$registry/library/$app:latest" \
     -t "$registry/library/$app:$timestamp" \
     --push .
