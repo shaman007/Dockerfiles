@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+umask 077
+
+: "${HARBOR_USERNAME:?HARBOR_USERNAME is required}"
+: "${HARBOR_PASSWORD:?HARBOR_PASSWORD is required}"
+
+repository="${GIT_REPOSITORY:-https://github.com/shaman007/Dockerfiles.git}"
+revision="${GIT_REF:-main}"
+registry="${REGISTRY:-harbor.andreybondarenko.com}"
+namespace="${NAMESPACE:-library}"
+platforms="${PLATFORMS:-linux/amd64,linux/arm64}"
+source_dir=/workspace/Dockerfiles
+
+git clone --depth=1 --single-branch --branch "$revision" "$repository" "$source_dir"
+
+printf '%s' "$HARBOR_PASSWORD" | podman login "$registry" \
+  --username "$HARBOR_USERNAME" \
+  --password-stdin
+unset HARBOR_PASSWORD
+
+cd "$source_dir"
+export CONTAINER_ENGINE=podman
+export LOGIN=0
+export PULL=0
+export REGISTRY="$registry"
+export NAMESPACE="$namespace"
+export PLATFORMS="$platforms"
+export STORAGE_DRIVER="${STORAGE_DRIVER:-vfs}"
+
+exec ./build.sh

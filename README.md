@@ -44,20 +44,22 @@ overrides.
 
 ## Nightly rebuilds
 
-The `Nightly Harbor rebuild` GitHub Actions workflow runs every day at 02:29
-UTC and invokes `build.sh` with Podman for every image. It republishes `latest`
-and creates an immutable UTC timestamp tag, so rebuilding also incorporates
-patched base images and distribution packages.
+The home-k8s repository contains a Kubernetes CronJob that runs every day at
+02:29 UTC and invokes `build.sh` inside the `podman-builder` image. Harbor
+credentials are provided by External Secrets from `kv/harbor`; they are not
+stored in either Git repository.
 
-Configure these GitHub Actions repository secrets before enabling the job:
+Bootstrap the self-hosted builder once before enabling the CronJob:
 
-- `HARBOR_USERNAME`: a Harbor user or robot account with push access to
-  `library`
-- `HARBOR_PASSWORD`: that account's password or robot token
+```bash
+./build.sh podman-builder
+```
 
-The existing GHCR workflow continues to run for pushes and pull requests; its
-nightly schedule was moved to the Harbor workflow because the cluster consumes
-the Harbor images.
+The CronJob then rebuilds the builder along with every other image, republishes
+`latest`, and creates immutable UTC timestamp tags. The builder intentionally
+uses Podman's `vfs` storage driver because it runs nested inside Kubernetes.
+Its privileged init container registers ARM64 emulation so the existing
+AMD64+ARM64 build contract is preserved on the AMD64-only cluster.
 
 
 ## License
