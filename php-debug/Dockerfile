@@ -7,7 +7,6 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update &&\
                    wget \
                    php-fpm \
                    default-dbus-session-bus \
-                   gpm \
                    file \
                    php-pear \
                    libfido2-1 \

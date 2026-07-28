@@ -4,7 +4,6 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update &&\
     DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install -- \
                    php-fpm \
                    default-dbus-session-bus \
-                   gpm \
                    file \
                    php-pear \
                    libfido2-1 \
