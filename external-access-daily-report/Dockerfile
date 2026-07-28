@@ -1,4 +1,4 @@
-FROM harbor.andreybondarenko.com/dockerhub/alpine:3.23
+FROM harbor.andreybondarenko.com/dockerhub/alpine:3.24
 
 RUN apk add --no-cache \
     ca-certificates \

@@ -1,4 +1,4 @@
-FROM python:3.12-slim AS runtime
+FROM docker.io/library/python:3.14-slim AS runtime
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 WORKDIR /app

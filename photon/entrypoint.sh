@@ -1,22 +1,26 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
+if [ -d /photon/photon_data/elasticsearch ]; then
+    echo "Legacy pre-1.0 Photon database detected; replace the volume with a Photon 1.x database dump" >&2
+    exit 1
+fi
 
-# Download elasticsearch index
-if [ ! -d "/photon/photon_data/elasticsearch" ]; then
+# Download the current Photon 1.x OpenSearch index when the volume is empty.
+if [ ! -d /photon/photon_data ] || [ -z "$(find /photon/photon_data -mindepth 1 -print -quit)" ]; then
     echo "Downloading search index"
 
     # Let graphhopper know where the traffic is coming from
     USER_AGENT="docker: tonsnoei/photon-geocoder"
-    # If you want to install a specific region only, enable the line below and disable the current 'wget' row.
-    # Take a look at http://download1.graphhopper.com/public/extracts/by-country-code for your country
-    # wget --user-agent="$USER_AGENT" -O - http://download1.graphhopper.com/public/extracts/by-country-code/nl/photon-db-nl-latest.tar.bz2 | bzip2 -cd | tar x
-    wget --user-agent="$USER_AGENT" -O - http://download1.graphhopper.com/public/photon-db-latest.tar.bz2 | bzip2 -cd | tar x
+    wget --user-agent="$USER_AGENT" -O - \
+        https://download1.graphhopper.com/public/photon-db-planet-1.0-latest.tar.bz2 \
+        | bzip2 -cd | tar x
 fi
 
-# Start photon if elastic index exists
-if [ -d "/photon/photon_data/elasticsearch" ]; then
+# Start Photon if the index exists.
+if [ -d /photon/photon_data ] && [ -n "$(find /photon/photon_data -mindepth 1 -print -quit)" ]; then
     echo "Start photon"
-    exec java -jar photon.jar "$@"
+    exec java -jar photon.jar serve "$@"
 else
     echo "Could not start photon, the search index could not be found"
     exit 1

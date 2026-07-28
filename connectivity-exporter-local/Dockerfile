@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM docker.io/library/python:3.14-slim
 #hadolint ignore=DL3008
 RUN DEBIAN_FRONTEND=noninteractive apt-get update &&\
     DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && apt-get install dumb-init -y --no-install-recommends &&\
