@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-umask 077
+umask 022
 
 : "${HARBOR_USERNAME:?HARBOR_USERNAME is required}"
 : "${HARBOR_PASSWORD:?HARBOR_PASSWORD is required}"

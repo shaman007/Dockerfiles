@@ -49,4 +49,5 @@ RUN chmod 0555 /etc/run && \
 COPY php.ini /etc/php/8.4/fpm/pool.d/
 RUN  mkdir -p /etc/php/8.4/mods-available
 COPY apcu.ini /etc/php/8.4/mods-available
+RUN chmod 0644 /etc/php/8.4/mods-available/apcu.ini
 ENTRYPOINT ["dumb-init", "--", "/etc/run"]
