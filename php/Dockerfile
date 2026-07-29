@@ -44,7 +44,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update &&\
                    ln -sf /proc/1/fd/1 /var/log/php8.4-fpm.log &&\
                    usermod -aG clock www-data
 COPY run /etc/
-RUN  mkdir -p /etc/php/8.4/fpm/pool.d/
+RUN chmod 0555 /etc/run && \
+    mkdir -p /etc/php/8.4/fpm/pool.d/
 COPY php.ini /etc/php/8.4/fpm/pool.d/
 RUN  mkdir -p /etc/php/8.4/mods-available
 COPY apcu.ini /etc/php/8.4/mods-available

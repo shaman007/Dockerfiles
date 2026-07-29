@@ -7,7 +7,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 COPY run /etc/
-RUN mkdir /var/run/clamav && \
+RUN chmod 0555 /etc/run && \
+    mkdir /var/run/clamav && \
     chown clamav:clamav /var/run/clamav && \
     chmod 750 /var/run/clamav && \
     mkdir /usr/local/share/clamav && \
