@@ -8,6 +8,13 @@
       "description": "Require review for container image updates",
       "matchDatasources": ["docker"],
       "automerge": false
+    },
+    {
+      "description": "Track the derived Dawarich image base",
+      "matchManagers": ["dockerfile"],
+      "matchPackageNames": ["freikin/dawarich"],
+      "groupName": "Dawarich base image",
+      "automerge": false
     }
   ]
 }
