@@ -4,7 +4,7 @@ set -eu
 # Prepare the small, pod-local writable surface that cannot be baked into an
 # image: service selection, generated Nginx configuration, and the persistent
 # Identity certificate copied to the two applications that consume it.
-install -d -m 0755 /runtime/supervisor /runtime/nginx /runtime/identity
+install -d -m 0755 /runtime/supervisor /runtime/nginx /runtime/identity /runtime/web
 cp -a /usr/local/share/bitwarden-supervisor/. /runtime/supervisor/
 cp -a /usr/local/share/bitwarden-nginx/. /runtime/nginx/
 
@@ -36,3 +36,4 @@ fi
 
 install -m 0600 /etc/bitwarden/identity.pfx /runtime/identity/identity.pfx
 install -m 0600 /etc/bitwarden/identity.pfx /runtime/identity/sso-identity.pfx
+install -m 0644 /dev/null /runtime/web/app-id.json

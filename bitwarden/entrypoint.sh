@@ -31,8 +31,8 @@ if [ "${BW_ENABLE_SSL:-false}" = "true" ]; then
 fi
 export globalSettings__baseServiceUri__internalVault="http://localhost:${BW_PORT_HTTP:-8080}"
 
-# hbs renders only /etc/nginx/http.d/bitwarden.conf. That directory is an
-# emptyDir prepared by the init container, so this remains compatible with a
-# read-only image filesystem.
+# hbs renders Nginx configuration and /app/Web/app-id.json. Both targets are
+# prepared as emptyDir mounts by the init container, so this remains compatible
+# with a read-only image filesystem.
 /usr/local/bin/hbs
 exec /usr/bin/supervisord
