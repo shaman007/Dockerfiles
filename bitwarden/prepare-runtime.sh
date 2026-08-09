@@ -5,6 +5,13 @@ set -eu
 # image: service selection, generated Nginx configuration, and the persistent
 # Identity certificate copied to the two applications that consume it.
 install -d -m 0755 /runtime/supervisor /runtime/nginx /runtime/identity /runtime/web
+install -d -m 0755 \
+  /var/lib/nginx/logs \
+  /var/lib/nginx/tmp/client_body \
+  /var/lib/nginx/tmp/fastcgi \
+  /var/lib/nginx/tmp/proxy \
+  /var/lib/nginx/tmp/scgi \
+  /var/lib/nginx/tmp/uwsgi
 cp -a /usr/local/share/bitwarden-supervisor/. /runtime/supervisor/
 cp -a /usr/local/share/bitwarden-nginx/. /runtime/nginx/
 

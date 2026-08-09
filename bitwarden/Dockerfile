@@ -12,6 +12,7 @@ RUN set -eux; \
     mkdir -p /usr/local/share/bitwarden-supervisor /usr/local/share/bitwarden-nginx; \
     cp -a /etc/supervisor.d/. /usr/local/share/bitwarden-supervisor/; \
     cp -a /etc/nginx/http.d/default.conf /usr/local/share/bitwarden-nginx/; \
+    sed -i '/^\[supervisord\]/a pidfile=/run/supervisord.pid' /etc/supervisord.conf; \
     chown -R 1000:1000 \
       /app \
       /etc/bitwarden \
