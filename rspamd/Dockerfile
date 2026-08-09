@@ -1,4 +1,4 @@
-FROM docker.io/library/debian:stable-slim
+FROM harbor.andreybondarenko.com/dockerhub/debian:stable-slim
 #hadolint ignore=DL3008
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y update &&\
     DEBIAN_FRONTEND=noninteractive apt-get -y install \

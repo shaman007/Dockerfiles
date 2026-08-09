@@ -1,4 +1,4 @@
-FROM docker.io/library/debian:stable-slim
+FROM harbor.andreybondarenko.com/dockerhub/debian:stable-slim
 
 # Install necessary dependencies
 #DL3009 misfires

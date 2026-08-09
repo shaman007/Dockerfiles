@@ -1,4 +1,4 @@
-FROM docker.io/library/ibm-semeru-runtimes:open-26-jre
+FROM harbor.andreybondarenko.com/dockerhub/ibm-semeru-runtimes:open-26-jre
 
 #hadolint ignore=DL3008
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get upgrade -y && \

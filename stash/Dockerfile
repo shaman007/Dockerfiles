@@ -1,8 +1,8 @@
 # Use any base image based on glibc symbols (basically ubuntu/debian instead of alpine)
-FROM docker.io/library/python:3.14-slim AS app
+FROM harbor.andreybondarenko.com/dockerhub/python:3.14-slim AS app
 
 # Choose which stash version you want here
-COPY --from=docker.io/stashapp/stash:v0.31.1 /usr/bin/stash /usr/bin/stash
+COPY --from=harbor.andreybondarenko.com/dockerhub/stashapp/stash:v0.31.1 /usr/bin/stash /usr/bin/stash
 # COPY --from=stashapp/stash:development /usr/bin/stash /usr/bin/stash
 
 # Git has been added from stash's Dockerfile
