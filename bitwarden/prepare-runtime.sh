@@ -6,6 +6,7 @@ set -eu
 # Identity certificate copied to the two applications that consume it.
 install -d -m 0755 /runtime/supervisor /runtime/nginx /runtime/identity /runtime/web
 install -d -m 0755 \
+  /var/log/nginx \
   /var/lib/nginx/logs \
   /var/lib/nginx/tmp/client_body \
   /var/lib/nginx/tmp/fastcgi \
