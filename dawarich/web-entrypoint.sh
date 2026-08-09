@@ -48,7 +48,9 @@ fi
 export DATABASE_HOST DATABASE_PORT DATABASE_USERNAME DATABASE_PASSWORD DATABASE_NAME
 
 create_database "$DATABASE_NAME" "$DATABASE_PASSWORD" "$DATABASE_HOST" "$DATABASE_PORT" "$DATABASE_USERNAME"
-bundle exec rails db:migrate
+# Rails dumps the post-migration schema by default. The application source is
+# deliberately read-only at runtime, so write this generated artifact to /tmp.
+SCHEMA=/tmp/schema.rb bundle exec rails db:migrate
 bundle exec rake data:migrate
 bundle exec rails db:seed
 
