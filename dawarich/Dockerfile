@@ -15,6 +15,7 @@ RUN set -eux; \
     chown --recursive 1000:1000 /var/app
 
 COPY --chown=1000:1000 web-entrypoint.sh sidekiq-entrypoint.sh /usr/local/bin/
+COPY --chown=1000:1000 read-only-rootfs.rb /var/app/config/initializers/
 RUN chmod 0555 /usr/local/bin/web-entrypoint.sh /usr/local/bin/sidekiq-entrypoint.sh
 
 USER 1000:1000
