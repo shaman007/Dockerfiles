@@ -36,6 +36,10 @@ Pass directory names to build only selected images:
 ./build.sh php postfix redis-cli
 ```
 
+Image sources retained only for historical reference live under `DEPRECATED/`.
+The default one-level `*/Dockerfile` discovery intentionally does not build
+Dockerfiles below that directory.
+
 The script pushes both `latest` and a UTC timestamp tag to
 `harbor.andreybondarenko.com/library`. It prefers Podman and falls back to
 Docker Buildx. Set `LOGIN=0` when already authenticated, `PULL=0` to build the
