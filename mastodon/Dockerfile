@@ -1,4 +1,4 @@
-FROM ghcr.io/mastodon/mastodon:v4.6.5
+FROM ghcr.io/mastodon/mastodon:v4.6.6
 
 USER root
 
