@@ -3,6 +3,7 @@
   "extends": ["config:recommended"],
   "gitAuthor": "Andrey Bondarenko <me@andreybondarenko.com>",
   "prHourlyLimit": 0,
+  "ignorePaths": ["DEPRECATED/**"],
   "packageRules": [
     {
       "description": "Require review for container image updates",
