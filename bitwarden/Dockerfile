@@ -1,7 +1,17 @@
 # renovate: datasource=docker depName=bitwarden/lite registryUrl=https://ghcr.io
 FROM harbor.andreybondarenko.com/github/bitwarden/lite:2026.7.2
 
+LABEL org.opencontainers.image.source="https://github.com/bitwarden/server" \
+      org.opencontainers.image.version="2026.7.2" \
+      org.opencontainers.image.licenses="AGPL-3.0-only AND LicenseRef-Bitwarden-1.0"
+
 USER root
+
+# Preserve the complete upstream dual-license notice in every redistributed
+# image. Files are pinned to the same upstream release as the base image.
+ADD --chmod=0444 https://raw.githubusercontent.com/bitwarden/server/v2026.7.2/LICENSE.txt /usr/share/licenses/bitwarden/LICENSE.txt
+ADD --chmod=0444 https://raw.githubusercontent.com/bitwarden/server/v2026.7.2/LICENSE_AGPL.txt /usr/share/licenses/bitwarden/LICENSE_AGPL.txt
+ADD --chmod=0444 https://raw.githubusercontent.com/bitwarden/server/v2026.7.2/LICENSE_BITWARDEN.txt /usr/share/licenses/bitwarden/LICENSE_BITWARDEN.txt
 
 # The upstream entrypoint creates this account, changes ownership throughout the
 # image, and edits Supervisor configuration every time the container starts.
