@@ -33,7 +33,7 @@ then build all images:
 Pass directory names to build only selected images:
 
 ```bash
-./build.sh php postfix redis-cli
+./build.sh php postfix sync
 ```
 
 Image sources retained only for historical reference live under `DEPRECATED/`.
