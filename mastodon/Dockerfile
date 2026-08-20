@@ -1,4 +1,5 @@
 FROM harbor.andreybondarenko.com/github/mastodon/mastodon:v4.6.6
+# mastodon-image-tag: v4.6.6-1
 
 USER root
 

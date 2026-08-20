@@ -10,12 +10,14 @@ Mastodon processes to raise it; for example, `5000` permits local posts of up
 to 5,000 grapheme clusters. Mastodon publishes the configured limit through
 its instance API, so the bundled web client can discover it.
 
-Renovate updates the versioned upstream image in the Dockerfile. The build
+Renovate updates the versioned upstream image in the Dockerfile. The
+`mastodon-image-tag` comment defines the immutable downstream release tag and
+must be advanced when a customization changes. The build
 intentionally fails if a new upstream release no longer contains the expected
 assignment, forcing the customization to be reviewed before that release is
 published.
 
-The GitHub Actions image workflow publishes both `latest` and the upstream
-Mastodon version, such as `ghcr.io/shaman007/mastodon:v4.6.5`. The Kubernetes
+The GitHub Actions image workflow publishes both `latest` and the downstream
+Mastodon image version, such as `ghcr.io/shaman007/mastodon:v4.6.6-1`. The Kubernetes
 deployment consumes the versioned tag through the Harbor GHCR proxy, allowing
 Renovate to propose the deployment update only after that image exists.

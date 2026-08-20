@@ -60,12 +60,12 @@ jobs:
             tags=("${image}:latest")
 
             if [[ "$name" == "mastodon" ]]; then
-              mastodon_version="$(sed -n 's|^FROM harbor\.andreybondarenko\.com/github/mastodon/mastodon:\([^[:space:]]*\)$|\1|p' "$dockerfile")"
-              [[ -n "$mastodon_version" ]] || {
-                echo "Could not determine the Mastodon version from $dockerfile" >&2
+              mastodon_image_tag="$(sed -n 's|^# mastodon-image-tag: \([^[:space:]]*\)$|\1|p' "$dockerfile")"
+              [[ -n "$mastodon_image_tag" ]] || {
+                echo "Could not determine the custom Mastodon image tag from $dockerfile" >&2
                 exit 1
               }
-              tags+=("${image}:${mastodon_version}")
+              tags+=("${image}:${mastodon_image_tag}")
             fi
 
             tag_args=()
