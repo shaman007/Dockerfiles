@@ -2,7 +2,8 @@
 
 This image derives from the pinned upstream Mastodon release and makes the
 otherwise hard-coded local post length configurable through
-`MAX_TOOT_CHARS`.
+`MAX_TOOT_CHARS`. It also prevents followed hashtags from bypassing exclusive
+list exclusion and inserting those accounts' posts into the Home timeline.
 
 The default remains the upstream value of `500`. Set `MAX_TOOT_CHARS` on all
 Mastodon processes to raise it; for example, `5000` permits local posts of up
