@@ -6,6 +6,7 @@ namespace="${NAMESPACE:-library}"
 platforms="${PLATFORMS:-linux/amd64,linux/arm64}"
 timestamp="${TAG:-$(date -u +"%Y-%m-%d-%H%M%S")}"
 engine="${CONTAINER_ENGINE:-}"
+cache_ttl="${CACHE_TTL:-720h}"
 
 usage() {
   cat <<'EOF'
@@ -20,6 +21,7 @@ Environment:
   NAMESPACE=name                  Registry namespace (default: library)
   PLATFORMS=list                  Target platforms (default: linux/amd64,linux/arm64)
   TAG=value                       Immutable tag (default: current UTC timestamp)
+  CACHE_TTL=duration              Podman cache lifetime (default: 720h)
   LOGIN=0                         Skip the interactive registry login
   PULL=0                          Skip pulling the Git branch before building
 EOF
@@ -96,6 +98,7 @@ printf 'Engine: %s\nRegistry: %s/%s\nPlatforms: %s\nTag: %s\nImages: %s\n' \
 
 for app in "${apps[@]}"; do
   image="$registry/$namespace/$app"
+  cache_image="$registry/$namespace/build-cache/$app"
   versioned_image="$image:$timestamp"
 
   printf '\n-------- BUILDING %s:latest and %s --------\n' "$image" "$versioned_image"
@@ -103,6 +106,10 @@ for app in "${apps[@]}"; do
   if [[ "$engine" == podman ]]; then
     # With multiple platforms Podman writes the results to a manifest list.
     podman build \
+      --layers \
+      --cache-from "$cache_image" \
+      --cache-to "$cache_image" \
+      --cache-ttl "$cache_ttl" \
       --platform "$platforms" \
       --manifest "$versioned_image" \
       "$app"
@@ -111,6 +118,8 @@ for app in "${apps[@]}"; do
   else
     docker buildx build \
       --platform "$platforms" \
+      --cache-from "type=registry,ref=$cache_image" \
+      --cache-to "type=registry,ref=$cache_image,mode=max" \
       --provenance=true \
       --sbom=true \
       --tag "$image:latest" \

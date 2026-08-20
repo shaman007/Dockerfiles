@@ -42,13 +42,15 @@ Dockerfiles below that directory.
 
 The script pushes both `latest` and a UTC timestamp tag to
 `harbor.andreybondarenko.com/library`. It prefers Podman and falls back to
-Docker Buildx. Set `LOGIN=0` when already authenticated, `PULL=0` to build the
-current checkout without updating it, or use `./build.sh --help` for all
-overrides.
+Docker Buildx. Both engines import and export reusable build layers through a
+per-image Harbor repository below `library/build-cache/`; Podman accepts a
+custom cache lifetime through `CACHE_TTL` and defaults to 720 hours. Set
+`LOGIN=0` when already authenticated, `PULL=0` to build the current checkout
+without updating it, or use `./build.sh --help` for all overrides.
 
-## Nightly rebuilds
+## Weekly rebuilds
 
-The home-k8s repository contains a Kubernetes CronJob that runs every day at
+The home-k8s repository contains a Kubernetes CronJob that runs every Monday at
 02:29 UTC and invokes `build.sh` inside the `podman-builder` image. Harbor
 credentials are provided by External Secrets from `kv/harbor`; they are not
 stored in either Git repository.
