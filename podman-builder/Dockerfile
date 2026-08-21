@@ -1,4 +1,4 @@
-FROM quay.io/podman/stable:v5.8.4@sha256:312a77be1ff51c7a124da1ffd0456802f11aeb338319b3b8b9d37358f9903fc7
+FROM quay.io/podman/stable:v5.8.4@sha256:8923deffca4caa8338b5dd4f553a86736f2aab424a4743827fccce632fecd750
 
 # hadolint ignore=DL3041
 RUN dnf install --assumeyes --setopt=install_weak_deps=False git-core && \
