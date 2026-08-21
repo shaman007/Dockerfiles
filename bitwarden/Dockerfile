@@ -1,5 +1,5 @@
 # renovate: datasource=docker depName=bitwarden/lite registryUrl=https://ghcr.io
-FROM harbor.andreybondarenko.com/github/bitwarden/lite:2026.7.2
+FROM harbor.andreybondarenko.com/github/bitwarden/lite:2026.8.0
 
 LABEL org.opencontainers.image.source="https://github.com/bitwarden/server" \
       org.opencontainers.image.version="2026.7.2" \
