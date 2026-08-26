@@ -78,9 +78,18 @@ jobs:
               push_args+=(--push)
             fi
 
-            echo "Building ${tags[*]} from ${dir}"
+            platforms="linux/amd64,linux/arm64"
+            if [[ -f "$dir/platforms" ]]; then
+              IFS= read -r platforms < "$dir/platforms"
+              [[ -n "$platforms" ]] || {
+                echo "$dir/platforms is empty" >&2
+                exit 1
+              }
+            fi
+
+            echo "Building ${tags[*]} from ${dir} for ${platforms}"
             docker buildx build "$dir" \
-              --platform linux/amd64,linux/arm64 \
+              --platform "$platforms" \
               "${tag_args[@]}" \
               --provenance=false \
               --cache-from type=gha \
