@@ -36,6 +36,9 @@ Pass directory names to build only selected images:
 ./build.sh php postfix sync
 ```
 
+An image directory can provide a `platforms` file to override the default
+platform list when an upstream binary is architecture-specific.
+
 Image sources retained only for historical reference live under `DEPRECATED/`.
 The default one-level `*/Dockerfile` discovery intentionally does not build
 Dockerfiles below that directory.

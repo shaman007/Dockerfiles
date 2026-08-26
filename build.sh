@@ -100,8 +100,14 @@ for app in "${apps[@]}"; do
   image="$registry/$namespace/$app"
   cache_image="$registry/$namespace/build-cache/$app"
   versioned_image="$image:$timestamp"
+  app_platforms="$platforms"
+  if [[ -f "$app/platforms" ]]; then
+    IFS= read -r app_platforms < "$app/platforms"
+    [[ -n "$app_platforms" ]] || die "$app/platforms is empty"
+  fi
 
-  printf '\n-------- BUILDING %s:latest and %s --------\n' "$image" "$versioned_image"
+  printf '\n-------- BUILDING %s:latest and %s (%s) --------\n' \
+    "$image" "$versioned_image" "$app_platforms"
 
   if [[ "$engine" == podman ]]; then
     # With multiple platforms Podman writes the results to a manifest list.
@@ -110,14 +116,14 @@ for app in "${apps[@]}"; do
       --cache-from "$cache_image" \
       --cache-to "$cache_image" \
       --cache-ttl "$cache_ttl" \
-      --platform "$platforms" \
+      --platform "$app_platforms" \
       --manifest "$versioned_image" \
       "$app"
     podman manifest push --all "$versioned_image" "docker://$versioned_image"
     podman manifest push --all "$versioned_image" "docker://$image:latest"
   else
     docker buildx build \
-      --platform "$platforms" \
+      --platform "$app_platforms" \
       --cache-from "type=registry,ref=$cache_image" \
       --cache-to "type=registry,ref=$cache_image,mode=max" \
       --provenance=true \
