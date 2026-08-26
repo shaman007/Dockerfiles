@@ -25,7 +25,21 @@ fi
   printf 'HTTP_POST_PORT=%s\n' "$HTTP_POST_PORT"
 } > /etc/ripe-atlas/config.txt
 
-rm -f /etc/ripe-atlas/reg_servers.sh
+if [[ "$REGISTRATION_IPV4_ONLY" == "yes" ]]; then
+  # Atlas derives the public IPv4 address from an IPv4 registration connection.
+  # Repeat the two official IPv4 endpoints because reginit expects six choices.
+  # This affects only the control bootstrap; IPv6 measurements remain available.
+  cat > /etc/ripe-atlas/reg_servers.sh <<'EOF'
+REG_1_HOST=193.0.19.75
+REG_2_HOST=193.0.19.76
+REG_3_HOST=193.0.19.75
+REG_4_HOST=193.0.19.76
+REG_5_HOST=193.0.19.75
+REG_6_HOST=193.0.19.76
+EOF
+else
+  rm -f /etc/ripe-atlas/reg_servers.sh
+fi
 chown -R ripe-atlas:ripe-atlas /etc/ripe-atlas /var/spool/ripe-atlas
 
 exec setpriv \

@@ -32,6 +32,7 @@ COPY --chmod=0555 entrypoint.sh /usr/local/bin/ripe-atlas-entrypoint
 
 ENV HOME=/var/spool/ripe-atlas \
     RXTXRPT=no \
+    REGISTRATION_IPV4_ONLY=yes \
     TELNETD_PORT=2023 \
     HTTP_POST_PORT=8080
 
