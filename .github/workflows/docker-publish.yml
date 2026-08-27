@@ -18,19 +18,10 @@ jobs:
     permissions:
       contents: read
       packages: write
-      id-token: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
-
-      - name: Install cosign
-        if: github.event_name != 'pull_request'
-        uses: sigstore/cosign-installer@v4.1.2
-        with:
-
-          cosign-release: 'v3.1.3'
-
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -46,7 +37,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build, push, and sign each Dockerfile
+      - name: Build and push each Dockerfile
         env:
           REGISTRY: ${{ env.REGISTRY }}
           PUSH: ${{ github.event_name != 'pull_request' }}
@@ -96,11 +87,4 @@ jobs:
               --cache-to type=gha,mode=max \
               --build-arg BUILDKIT_INLINE_CACHE=1 \
               "${push_args[@]}"
-
-            if [[ "$PUSH" == "true" ]]; then
-              digest="$(docker buildx imagetools inspect "${tags[0]}" --format '{{json .Manifest.Digest}}' | tr -d '"')"
-              ref="${image}@${digest}"
-              echo "Signing ${ref}"
-              cosign sign --yes "$ref"
-            fi
           done < <(find . -mindepth 2 -maxdepth 2 -name Dockerfile -print | sort)
