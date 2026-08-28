@@ -1,4 +1,4 @@
-FROM docker.io/library/oraclelinux:9-slim@sha256:33bcb689f7c8e6bd15bcee9a253538bc0b7cafeadb8b1a9d6ac90669c4497ce3
+FROM docker.io/library/oraclelinux:9-slim
 
 ARG RIPE_ATLAS_REPO_VERSION=1.6-1
 ARG RIPE_ATLAS_VERSION=5130-1.el9
