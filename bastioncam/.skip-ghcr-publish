@@ -1,0 +1,2 @@
+BastionCam publishes ghcr.io/shaman007/bastioncam from its source repository.
+This Dockerfile remains available for the independent Harbor build pipeline.
