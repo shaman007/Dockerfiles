@@ -1,3 +1,4 @@
+# Deprecated: the CronJob now uses upstream Podman and git-sync directly.
 FROM quay.io/podman/stable:v5.8.4
 
 # hadolint ignore=DL3041

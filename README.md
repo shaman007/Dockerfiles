@@ -54,21 +54,15 @@ without updating it, or use `./build.sh --help` for all overrides.
 ## Weekly rebuilds
 
 The home-k8s repository contains a Kubernetes CronJob that runs every Monday at
-02:29 UTC and invokes `build.sh` inside the `podman-builder` image. Harbor
-credentials are provided by External Secrets from `kv/harbor`; they are not
-stored in either Git repository.
+02:29 UTC. An upstream `git-sync` init container checks out this repository,
+then the upstream Podman stable image invokes `build.sh`. Harbor credentials are
+provided by External Secrets from `kv/harbor`; they are not stored in either Git
+repository.
 
-Bootstrap the self-hosted builder once before enabling the CronJob:
-
-```bash
-./build.sh podman-builder
-```
-
-The CronJob then rebuilds the builder along with every other image, republishes
-`latest`, and creates immutable UTC timestamp tags. The builder intentionally
-uses Podman's `vfs` storage driver because it runs nested inside Kubernetes.
-Its privileged init container registers ARM64 emulation so the existing
-AMD64+ARM64 build contract is preserved on the AMD64-only cluster.
+The CronJob republishes `latest` and creates immutable UTC timestamp tags. It
+uses Podman's `overlay` storage driver on an XFS-backed EmptyDir and currently
+builds AMD64 images, matching the cluster nodes. Manual builds retain the
+default AMD64+ARM64 contract.
 
 
 ## License

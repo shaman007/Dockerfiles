@@ -1,3 +1,4 @@
+# Deprecated: Karakeep publishes its own tested Chrome image.
 FROM harbor.andreybondarenko.com/dockerhub/alpine:3.24
 
 # Chromium + deps (nss needed), SwiftShader, fonts

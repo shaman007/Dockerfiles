@@ -1,3 +1,4 @@
+# Deprecated: upstream Bitwarden Lite now supports rootless read-only operation.
 # renovate: datasource=docker depName=bitwarden/lite registryUrl=https://ghcr.io
 FROM harbor.andreybondarenko.com/github/bitwarden/lite:2026.8.1
 
