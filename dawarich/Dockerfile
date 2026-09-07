@@ -1,5 +1,5 @@
 # renovate: datasource=docker depName=freikin/dawarich
-FROM harbor.andreybondarenko.com/dockerhub/freikin/dawarich:1.14.3
+FROM harbor.andreybondarenko.com/dockerhub/freikin/dawarich:1.14.4
 
 USER root
 
