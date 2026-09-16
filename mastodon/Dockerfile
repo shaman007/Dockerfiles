@@ -1,5 +1,5 @@
-FROM harbor.andreybondarenko.com/github/mastodon/mastodon:v4.7.3
-# mastodon-image-tag: v4.7.3
+FROM harbor.andreybondarenko.com/github/mastodon/mastodon:v4.7.2
+# mastodon-image-tag: v4.7.2
 USER root
 
 RUN sed -i \
