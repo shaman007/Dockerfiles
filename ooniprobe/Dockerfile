@@ -1,4 +1,4 @@
-FROM docker.io/library/alpine:3.24.2 AS download
+FROM docker.io/library/alpine:3.24.3 AS download
 
 ARG TARGETARCH
 ARG OONIPROBE_VERSION=3.30.0
