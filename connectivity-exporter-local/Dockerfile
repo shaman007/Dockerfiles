@@ -9,7 +9,8 @@ RUN pip install --no-cache-dir prometheus_client pyyaml flask
 COPY run /etc
 RUN chmod +x /etc/run
 RUN mkdir -p /app
-ADD https://raw.githubusercontent.com/shaman007/connectivity-exporter/refs/heads/main/check.py /app/check.py
+ADD --chmod=0644 https://raw.githubusercontent.com/shaman007/connectivity-exporter/refs/heads/main/check.py /app/check.py
 COPY config.yaml /app/config.yaml
+USER 65534:65534
 STOPSIGNAL SIGKILL
 ENTRYPOINT ["dumb-init", "--", "/etc/run"]

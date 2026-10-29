@@ -1,6 +1,9 @@
-FROM harbor.andreybondarenko.com/dockerhub/debian:stable-slim
+FROM harbor.andreybondarenko.com/dockerhub/debian:trixie-slim
+# DSA-6574-1: CVE-2026-109618 and CVE-2026-109619.
+ARG PHP_MIN_VERSION=8.4.27-1~deb13u1
 #hadolint ignore=DL3008
 RUN DEBIAN_FRONTEND=noninteractive apt-get update &&\
+    DEBIAN_FRONTEND=noninteractive apt-get -y upgrade &&\
     DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install -- \
                    php-fpm \
                    default-dbus-session-bus \
@@ -38,6 +41,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update &&\
                    ca-certificates \
                    dumb-init \
                    libimage-exiftool-perl && \
+                   dpkg --compare-versions "$(dpkg-query -W -f='${Version}' php8.4-fpm)" ge "$PHP_MIN_VERSION" && \
+                   dpkg --compare-versions "$(dpkg-query -W -f='${Version}' php8.4-cli)" ge "$PHP_MIN_VERSION" && \
                    DEBIAN_FRONTEND=noninteractive apt-get remove -y git &&\
                    DEBIAN_FRONTEND=noninteractive apt-get autoremove -y &&\
                    DEBIAN_FRONTEND=noninteractive apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
