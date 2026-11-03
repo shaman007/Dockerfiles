@@ -6,7 +6,7 @@ RUN set -eux; \
     addgroup -g 1000 crowdsec; \
     adduser -D -H -u 1000 -G crowdsec -h /var/lib/crowdsec crowdsec; \
     mkdir -p /etc/crowdsec_data /var/lib/crowdsec/data; \
-    chown -R 1000:1000 /staging/etc/crowdsec /var/lib/crowdsec /etc/crowdsec_data; \
+    chown -R 1000:1000 /staging/etc/crowdsec /staging/var/lib/crowdsec /var/lib/crowdsec /etc/crowdsec_data; \
     chgrp 1000 /etc; \
     chmod 1775 /etc
 

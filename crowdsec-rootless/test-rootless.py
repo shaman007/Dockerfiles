@@ -9,7 +9,7 @@ import tempfile
 import shutil
 import uuid
 parser=argparse.ArgumentParser(description='Exercise rootless CrowdSec startup and SQLite migration with disposable local volumes')
-parser.add_argument('--image',default='localhost/crowdsec-rootless:v1.8.1-rootless.1')
+parser.add_argument('--image',default='localhost/crowdsec-rootless:v1.8.1-rootless.2')
 parser.add_argument('--lapi-startup-script',required=True,type=pathlib.Path)
 args=parser.parse_args()
 image=args.image;prefix='codex-crowdsec-rootless-'+uuid.uuid4().hex[:8];pod=prefix+'-test'
@@ -67,9 +67,14 @@ def phase(number):
   fields={l.split(':',1)[0]:l.split(':',1)[1].strip() for l in p.stdout.splitlines() if ':' in l}
   assert fields['CapEff']=='0000000000000000' and fields['CapBnd']=='0000000000000000' and fields['NoNewPrivs']=='1' and fields['Seccomp']=='2',name
  if number>=2:call(['run','--rm',*common,'--entrypoint=sh','-v',vols['shared']+':/tmp_config:ro',image,'-ceu','cp /tmp_config/original_credentials.yaml /staging/etc/crowdsec/local_api_credentials.yaml; ln -s /staging/etc/crowdsec /etc/crowdsec; cscli lapi status >/dev/null 2>&1'])
+ for name in [lapi,agent]:
+  logs=call(['logs',name],check=False)
+  if 'permission denied' in (logs.stdout+logs.stderr).lower():raise RuntimeError(name+' reported a startup permission failure')
  print('Phase',number,'UID1000 / zero capabilities / no-new-privileges / metrics / auth passed',flush=True)
  call(['stop','--time','10',agent,lapi]);call(['rm',agent,lapi])
 try:
+ call(['run','--rm','--cap-drop=ALL','--security-opt=no-new-privileges','--entrypoint=sh',image,'-ceu','test "$(id -u)" = 1000; for file in /staging/var/lib/crowdsec/data/*; do test -r "$file"; done'])
+ print('Bundled GeoIP/scenario datasets readable by UID1000',flush=True)
  call(['pod','create','--name',pod])
  for v in vols.values():call(['volume','create',v])
  phase(1)

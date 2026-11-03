@@ -37,7 +37,7 @@ UID-1000 image with its existing database path.
 From the Dockerfiles root:
 
 ```sh
-podman build -t localhost/crowdsec-rootless:v1.8.1-rootless.1 crowdsec-rootless
+podman build -t localhost/crowdsec-rootless:v1.8.1-rootless.2 crowdsec-rootless
 ```
 
 Extract the pinned chart's LAPI startup script (code only, not secrets), then run
@@ -53,3 +53,9 @@ namespace; there is no root init in the production design.
 The tested build is AMD64, matching all current cluster nodes. Revalidate other
 architectures and every base/chart update. Both copies of the image reference
 (global chart image and database init) must remain aligned with the GitOps values.
+
+The image also owns `/staging/var/lib/crowdsec`, whose bundled datasets are
+symlinked into runtime data. The integration test verifies UID 1000 can read
+every bundled GeoIP/scenario asset; checking only the runtime symlink owner
+is insufficient. Kubernetes tests must retain the chart's exact ConfigMap and
+volume subPath layout.
