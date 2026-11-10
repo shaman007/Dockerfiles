@@ -18,10 +18,14 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+
+      - name: Test signing contract without building images
+        run: python3 -m unittest discover -s tests -p test_build_signing.py -v
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -36,6 +40,12 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Cosign
+        if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.0.6
 
       - name: Build and push each Dockerfile
         env:
@@ -85,12 +95,24 @@ jobs:
             fi
 
             echo "Building ${tags[*]} from ${dir} for ${platforms}"
+            metadata="$(mktemp)"
             docker buildx build "$dir" \
               --platform "$platforms" \
               "${tag_args[@]}" \
+              --metadata-file "$metadata" \
               --provenance=false \
               --cache-from type=gha \
               --cache-to type=gha,mode=max \
               --build-arg BUILDKIT_INLINE_CACHE=1 \
               "${push_args[@]}"
+            if [[ "$PUSH" == "true" ]]; then
+              digest="$(jq -er '. ["containerimage.digest"]' "$metadata")"
+              [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || exit 1
+              cosign sign --yes "$image@$digest"
+              cosign verify \
+                --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" \
+                --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+                "$image@$digest"
+            fi
+            rm -f "$metadata"
           done < <(find . -mindepth 2 -maxdepth 2 -name Dockerfile -print | sort)

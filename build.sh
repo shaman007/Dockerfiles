@@ -7,6 +7,7 @@ platforms="${PLATFORMS:-linux/amd64,linux/arm64}"
 timestamp="${TAG:-$(date -u +"%Y-%m-%d-%H%M%S")}"
 engine="${CONTAINER_ENGINE:-}"
 cache_ttl="${CACHE_TTL:-720h}"
+sign="${SIGN:-0}"
 
 usage() {
   cat <<'EOF'
@@ -22,6 +23,9 @@ Environment:
   PLATFORMS=list                  Target platforms (default: linux/amd64,linux/arm64)
   TAG=value                       Immutable tag (default: current UTC timestamp)
   CACHE_TTL=duration              Podman cache lifetime (default: 720h)
+  SIGN=1                          Require Cosign signing and verification after push
+  COSIGN_KEY=path|kms-uri          Signing key reference (SIGN=1)
+  COSIGN_PUBLIC_KEY=path           Trusted public key for read-back verification
   LOGIN=0                         Skip the interactive registry login
   PULL=0                          Skip pulling the Git branch before building
 EOF
@@ -38,6 +42,27 @@ case "${1:-}" in
     exit 0
     ;;
 esac
+
+# Check signing prerequisites before any build or publication.
+case "$sign" in
+  0) ;;
+  1)
+    command -v cosign >/dev/null || die "SIGN=1 requires cosign"
+    [[ -n "${COSIGN_KEY:-}" ]] || die "SIGN=1 requires COSIGN_KEY"
+    [[ -r "${COSIGN_PUBLIC_KEY:-}" ]] || die "SIGN=1 requires COSIGN_PUBLIC_KEY"
+    ;;
+  *) die "SIGN must be 0 or 1" ;;
+esac
+build_metadata="$(mktemp -d)"
+trap 'rm -rf "$build_metadata"' EXIT
+
+sign_digest() {
+  [[ "$sign" == 1 ]] || return 0
+  local image="$1" digest="$2"
+  [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || die "invalid pushed image digest"
+  cosign sign --yes --key "$COSIGN_KEY" "$image@$digest"
+  cosign verify --key "$COSIGN_PUBLIC_KEY" "$image@$digest"
+}
 
 if [[ "${PULL:-1}" == 1 ]]; then
   command -v git >/dev/null || die "updating the checkout requires git"
@@ -61,6 +86,9 @@ case "$engine" in
   docker)
     command -v docker >/dev/null || die "CONTAINER_ENGINE=docker, but docker is not installed"
     docker buildx version >/dev/null 2>&1 || die "Docker Buildx is not available"
+    if [[ "$sign" == 1 ]]; then
+      command -v python3 >/dev/null || die "signed Docker builds require python3"
+    fi
     ;;
   *)
     die "unsupported container engine: $engine (use podman or docker)"
@@ -119,11 +147,14 @@ for app in "${apps[@]}"; do
       --platform "$app_platforms" \
       --manifest "$versioned_image" \
       "$app"
-    podman manifest push --all "$versioned_image" "docker://$versioned_image"
-    podman manifest push --all "$versioned_image" "docker://$image:latest"
+    podman manifest push --all --digestfile "$build_metadata/versioned.digest" "$versioned_image" "docker://$versioned_image"
+    sign_digest "$image" "$(cat "$build_metadata/versioned.digest")"
+    podman manifest push --all --digestfile "$build_metadata/latest.digest" "$versioned_image" "docker://$image:latest"
+    sign_digest "$image" "$(cat "$build_metadata/latest.digest")"
   else
     docker buildx build \
       --platform "$app_platforms" \
+      --metadata-file "$build_metadata/build.json" \
       --cache-from "type=registry,ref=$cache_image" \
       --cache-to "type=registry,ref=$cache_image,mode=max" \
       --provenance=true \
@@ -132,5 +163,9 @@ for app in "${apps[@]}"; do
       --tag "$versioned_image" \
       --push \
       "$app"
+    if [[ "$sign" == 1 ]]; then
+      digest="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["containerimage.digest"])' "$build_metadata/build.json")"
+      sign_digest "$image" "$digest"
+    fi
   fi
 done
