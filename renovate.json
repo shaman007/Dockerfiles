@@ -3,19 +3,21 @@
   "extends": ["config:recommended"],
   "gitAuthor": "Andrey Bondarenko <me@andreybondarenko.com>",
   "prHourlyLimit": 0,
+  "automerge": true,
+  "automergeType": "pr",
+  "platformAutomerge": false,
+  "ignoreTests": false,
   "ignorePaths": ["DEPRECATED/**"],
   "packageRules": [
     {
-      "description": "Require review for container image updates",
-      "matchDatasources": ["docker"],
-      "automerge": false
+      "description": "Merge container image updates after all checks pass",
+      "matchDatasources": ["docker"]
     },
     {
       "description": "Track the derived Dawarich image base",
       "matchManagers": ["dockerfile"],
       "matchPackageNames": ["freikin/dawarich"],
-      "groupName": "Dawarich base image",
-      "automerge": false
+      "groupName": "Dawarich base image"
     }
   ]
 }

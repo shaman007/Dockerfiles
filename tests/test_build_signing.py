@@ -2,7 +2,7 @@ from pathlib import Path
 import json
 import os
 import shutil
-import subprocess
+import subprocess  # nosec B404
 import tempfile
 import unittest
 
@@ -57,6 +57,48 @@ if pathlib.Path(sys.argv[0]).name=='cosign' and args[0]=='sign' and os.environ['
         result,calls=self.exercise(invalid=True)
         self.assertNotEqual(result.returncode,0)
         self.assertFalse(any(c[0]=='cosign' for c in calls))
+
+
+class RegistryVerificationTests(unittest.TestCase):
+    def exercise(self, mode):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            counter = root / 'attempts'
+            cosign = root / 'cosign'
+            cosign.write_text('''#!/bin/bash
+count=0
+[[ ! -f "$COUNTER" ]] || read -r count < "$COUNTER"
+count=$((count + 1))
+echo "$count" > "$COUNTER"
+if [[ "$MODE" == transient && "$count" == 3 ]]; then exit 0; fi
+if [[ "$MODE" == invalid ]]; then
+  echo 'certificate identity mismatch' >&2
+else
+  echo 'Error: no signatures found' >&2
+fi
+exit 10
+''')
+            cosign.chmod(0o755)
+            sleep = root / 'sleep'
+            sleep.write_text('#!/bin/bash\nexit 0\n')
+            sleep.chmod(0o755)
+            env = dict(os.environ, PATH=str(root) + os.pathsep + os.environ['PATH'],
+                       COUNTER=str(counter), MODE=mode)
+            result = subprocess.run(
+                ['bash', str(ROOT / 'tools/supply-chain/verify-image.sh'),
+                 '--certificate-identity', 'https://example.test/workflow',
+                 'example.test/image@sha256:' + 'a' * 64],
+                env=env, capture_output=True, text=True)
+            return result.returncode, int(counter.read_text())
+
+    def test_signature_becomes_discoverable(self):
+        self.assertEqual(self.exercise('transient'), (0, 3))
+
+    def test_missing_signature_still_fails(self):
+        self.assertEqual(self.exercise('missing'), (10, 6))
+
+    def test_invalid_certificate_fails_immediately(self):
+        self.assertEqual(self.exercise('invalid'), (10, 1))
 
 
 if __name__=='__main__':unittest.main()

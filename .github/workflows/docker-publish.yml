@@ -109,7 +109,7 @@ jobs:
               digest="$(jq -er '. ["containerimage.digest"]' "$metadata")"
               [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || exit 1
               cosign sign --yes "$image@$digest"
-              cosign verify \
+              bash tools/supply-chain/verify-image.sh \
                 --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" \
                 --certificate-oidc-issuer https://token.actions.githubusercontent.com \
                 "$image@$digest"
